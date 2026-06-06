@@ -1,0 +1,11 @@
+C:\Users\bagoa\cardgameTest\CardGamePrototype.Core\bin\Debug\net10.0\CardGamePrototype.Core.deps.json
+C:\Users\bagoa\cardgameTest\CardGamePrototype.Core\bin\Debug\net10.0\CardGamePrototype.Core.dll
+C:\Users\bagoa\cardgameTest\CardGamePrototype.Core\bin\Debug\net10.0\CardGamePrototype.Core.pdb
+C:\Users\bagoa\cardgameTest\CardGamePrototype.Core\obj\Debug\net10.0\CardGamePrototype.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\bagoa\cardgameTest\CardGamePrototype.Core\obj\Debug\net10.0\CardGamePrototype.Core.AssemblyInfoInputs.cache
+C:\Users\bagoa\cardgameTest\CardGamePrototype.Core\obj\Debug\net10.0\CardGamePrototype.Core.AssemblyInfo.cs
+C:\Users\bagoa\cardgameTest\CardGamePrototype.Core\obj\Debug\net10.0\CardGamePrototype.Core.csproj.CoreCompileInputs.cache
+C:\Users\bagoa\cardgameTest\CardGamePrototype.Core\obj\Debug\net10.0\CardGamePrototype.Core.dll
+C:\Users\bagoa\cardgameTest\CardGamePrototype.Core\obj\Debug\net10.0\refint\CardGamePrototype.Core.dll
+C:\Users\bagoa\cardgameTest\CardGamePrototype.Core\obj\Debug\net10.0\CardGamePrototype.Core.pdb
+C:\Users\bagoa\cardgameTest\CardGamePrototype.Core\obj\Debug\net10.0\ref\CardGamePrototype.Core.dll
