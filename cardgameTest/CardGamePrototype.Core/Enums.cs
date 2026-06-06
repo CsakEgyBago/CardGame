@@ -1,27 +1,32 @@
 namespace CardGamePrototype.Core
 {
+    public enum ElementType : byte
+    {
+        None,
+        Physical,
+        Fire,
+        Frost,
+        Void,
+        Lightning,
+        Bio
+    }
+
     public enum CardType
     {
-        Catalyst,
-        Executioner,
-        Utility,
-        Hybrid
+        Strike,
+        Incantation,
+        Construct,
+        Reaction
     }
 
     public enum EffectType
     {
-        ApplyStatus,
-        ConsumeStatus,
+        ApplyElement,
+        ConsumeElement,
         Damage,
         Move,
         ConditionalDamage,
         Composite
-    }
-
-    public enum StatusId
-    {
-        Burn,
-        Frost
     }
 
     public enum TargetType

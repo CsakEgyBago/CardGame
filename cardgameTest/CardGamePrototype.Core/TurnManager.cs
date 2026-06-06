@@ -2,7 +2,6 @@ namespace CardGamePrototype.Core
 {
     public class TurnManager
     {
-        private readonly Random _rng = new();
         public int HandSize { get; } = 5;
         public int PlayerEnergyPerTurn { get; } = 3;
 
@@ -34,7 +33,7 @@ namespace CardGamePrototype.Core
             int n = list.Count;
             for (int i = n - 1; i > 0; i--)
             {
-                int j = _rng.Next(i + 1);
+                int j = state.Rng.Next(i + 1);
                 var tmp = list[i];
                 list[i] = list[j];
                 list[j] = tmp;
@@ -51,7 +50,12 @@ namespace CardGamePrototype.Core
 
             state.Player.Energy -= card.Cost;
 
-            foreach (var e in card.Effects)
+            foreach (var e in card.CatalystEffects)
+            {
+                EffectResolver.ResolveEffect(e, state);
+            }
+
+            foreach (var e in card.ExecutionerEffects)
             {
                 EffectResolver.ResolveEffect(e, state);
             }

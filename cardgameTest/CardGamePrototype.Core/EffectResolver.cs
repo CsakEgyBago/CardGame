@@ -6,8 +6,8 @@ namespace CardGamePrototype.Core
         {
             switch (e.Type)
             {
-                case EffectType.ApplyStatus:
-                    ApplyStatus(e, state);
+                case EffectType.ApplyElement:
+                    ApplyElement(e, state);
                     break;
                 case EffectType.Damage:
                     Damage(e, state);
@@ -18,8 +18,8 @@ namespace CardGamePrototype.Core
                 case EffectType.Move:
                     Move(e, state);
                     break;
-                case EffectType.ConsumeStatus:
-                    ConsumeStatus(e, state);
+                case EffectType.ConsumeElement:
+                    ConsumeElement(e, state);
                     break;
                 case EffectType.Composite:
                     break;
@@ -36,11 +36,11 @@ namespace CardGamePrototype.Core
             };
         }
 
-        private static void ApplyStatus(EffectDefinition e, BattleState state)
+        private static void ApplyElement(EffectDefinition e, BattleState state)
         {
             var target = ResolveTarget(e, state);
-            if (target == null || e.Status == null) return;
-            target.Statuses.Apply(e.Status.Value, e.Value);
+            if (target == null || e.Element == null) return;
+            target.ActiveElements.Apply(e.Element.Value, e.Value);
         }
 
         private static void Damage(EffectDefinition e, BattleState state)
@@ -55,15 +55,15 @@ namespace CardGamePrototype.Core
             var target = ResolveTarget(e, state);
             if (target == null) return;
 
-            if (e.ConditionStatus != null)
+            if (e.ConditionElement != null)
             {
-                int stacks = target.Statuses.GetStacks(e.ConditionStatus.Value);
+                int stacks = target.ActiveElements.GetStacks(e.ConditionElement.Value);
                 if (stacks >= e.ConditionStacks)
                 {
                     target.ReceiveDamage(e.Value);
                     if (e.ConsumeStacks > 0)
                     {
-                        target.Statuses.Consume(e.ConditionStatus.Value, e.ConsumeStacks);
+                        target.ActiveElements.Consume(e.ConditionElement.Value, e.ConsumeStacks);
                     }
                 }
                 return;
@@ -82,11 +82,11 @@ namespace CardGamePrototype.Core
             target.ReceiveDamage(e.Value);
         }
 
-        private static void ConsumeStatus(EffectDefinition e, BattleState state)
+        private static void ConsumeElement(EffectDefinition e, BattleState state)
         {
             var target = ResolveTarget(e, state);
-            if (target == null || e.Status == null) return;
-            target.Statuses.Consume(e.Status.Value, e.Value);
+            if (target == null || e.Element == null) return;
+            target.ActiveElements.Consume(e.Element.Value, e.Value);
         }
 
         private static void Move(EffectDefinition e, BattleState state)

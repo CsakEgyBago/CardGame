@@ -9,17 +9,18 @@ namespace CardGamePrototype.Core
         {
             var player = new Player(50, 0);
             var enemy = new Entity("Enemy", 50, 3);
-            State = new BattleState(player, enemy);
+            int seed = 1337;
+            State = new BattleState(player, enemy, seed);
             var cards = new List<CardDefinition>();
             for (int i = 0; i < 4; i++) cards.Add(CardLibrary.Ignite());
             for (int i = 0; i < 4; i++) cards.Add(CardLibrary.Firebolt());
             for (int i = 0; i < 2; i++) cards.Add(CardLibrary.Push());
             for (int i = 0; i < 2; i++) cards.Add(CardLibrary.FrostNova());
+            for (int i = 0; i < 2; i++) cards.Add(CardLibrary.BioSpore());
 
-            var rng = new Random();
             for (int i = cards.Count - 1; i > 0; i--)
             {
-                int j = rng.Next(i + 1);
+                int j = State.Rng.Next(i + 1);
                 var tmp = cards[i]; cards[i] = cards[j]; cards[j] = tmp;
             }
 

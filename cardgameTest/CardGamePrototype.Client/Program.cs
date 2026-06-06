@@ -42,8 +42,9 @@ namespace CardGamePrototype.Client
                 // Enemy info
                 Raylib.DrawText($"Enemy HP: {s.Enemy.Hp}/{s.Enemy.MaxHp}", 400, 20, 20, Color.White);
                 Raylib.DrawText($"Position: {s.Enemy.Position}", 400, 46, 18, Color.LightGray);
-                Raylib.DrawText($"Burn: {s.Enemy.Statuses.GetStacks(StatusId.Burn)}", 400, 70, 18, Color.Orange);
-                Raylib.DrawText($"Frost: {s.Enemy.Statuses.GetStacks(StatusId.Frost)}", 400, 92, 18, Color.SkyBlue);
+                Raylib.DrawText($"Fire: {s.Enemy.ActiveElements.GetStacks(ElementType.Fire)}", 400, 70, 18, Color.Orange);
+                Raylib.DrawText($"Frost: {s.Enemy.ActiveElements.GetStacks(ElementType.Frost)}", 400, 92, 18, Color.SkyBlue);
+                Raylib.DrawText($"Bio: {s.Enemy.ActiveElements.GetStacks(ElementType.Bio)}", 400, 114, 18, Color.Lime);
 
                 // Board positions
                 int baseX = 200; int baseY = 200; int cellW = 80;
@@ -67,7 +68,8 @@ namespace CardGamePrototype.Client
                     Raylib.DrawRectangleLines(x, handY, cw, ch, Color.DarkGray);
                     Raylib.DrawText(c.Name, x + 6, handY + 6, 16, Color.Black);
                     Raylib.DrawText($"Cost: {c.Cost}", x + 6, handY + 28, 14, Color.DarkGray);
-                    Raylib.DrawText(string.Join(", ", c.Effects.ConvertAll(e => e.Type.ToString())), x + 6, handY + 48, 12, Color.DarkGray);
+                    Raylib.DrawText($"C:{c.CatalystEffects.Count} E:{c.ExecutionerEffects.Count}", x + 6, handY + 48, 12, Color.DarkGray);
+                    Raylib.DrawText(c.CardType.ToString(), x + 6, handY + 64, 12, Color.DarkGray);
                     Raylib.DrawText((i + 1).ToString(), x + cw - 24, handY + 6, 20, Color.DarkBlue);
                 }
 

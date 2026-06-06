@@ -1,13 +1,13 @@
 namespace CardGamePrototype.Core
 {
-    public class StatusInstance
+    public class ElementStack
     {
-        public StatusId Id { get; }
+        public ElementType Element { get; }
         public int Stacks { get; private set; }
 
-        public StatusInstance(StatusId id, int stacks)
+        public ElementStack(ElementType element, int stacks)
         {
-            Id = id;
+            Element = element;
             Stacks = stacks;
         }
 
@@ -26,17 +26,17 @@ namespace CardGamePrototype.Core
         }
     }
 
-    public class StatusCollection
+    public class ElementCollection
     {
-        private readonly Dictionary<StatusId, StatusInstance> _statuses = new();
+        private readonly Dictionary<ElementType, ElementStack> _elements = new();
 
-        public void Apply(StatusId id, int stacks)
+        public void Apply(ElementType element, int stacks)
         {
             if (stacks <= 0) return;
-            if (!_statuses.TryGetValue(id, out var inst))
+            if (!_elements.TryGetValue(element, out var inst))
             {
-                inst = new StatusInstance(id, stacks);
-                _statuses[id] = inst;
+                inst = new ElementStack(element, stacks);
+                _elements[element] = inst;
             }
             else
             {
@@ -44,21 +44,21 @@ namespace CardGamePrototype.Core
             }
         }
 
-        public int GetStacks(StatusId id)
+        public int GetStacks(ElementType element)
         {
-            return _statuses.TryGetValue(id, out var inst) ? inst.Stacks : 0;
+            return _elements.TryGetValue(element, out var inst) ? inst.Stacks : 0;
         }
 
-        public int Consume(StatusId id, int stacks)
+        public int Consume(ElementType element, int stacks)
         {
-            if (!_statuses.TryGetValue(id, out var inst)) return 0;
+            if (!_elements.TryGetValue(element, out var inst)) return 0;
             int consumed = inst.Consume(stacks);
-            if (inst.Stacks <= 0) _statuses.Remove(id);
+            if (inst.Stacks <= 0) _elements.Remove(element);
             return consumed;
         }
 
-        public bool Has(StatusId id) => GetStacks(id) > 0;
+        public bool Has(ElementType element) => GetStacks(element) > 0;
 
-        public void Clear() => _statuses.Clear();
+        public void Clear() => _elements.Clear();
     }
 }

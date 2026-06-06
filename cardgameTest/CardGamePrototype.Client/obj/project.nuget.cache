@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "XWUhXlMSNx8=",
+  "dgSpecHash": "iWbqLnQo+vo=",
   "success": true,
-  "projectFilePath": "C:\\Users\\bagoa\\cardgameTest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj",
+  "projectFilePath": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\bagoa\\.nuget\\packages\\raylib-cs\\8.0.0\\raylib-cs.8.0.0.nupkg.sha512"
+    "C:\\Users\\Gamer\\.nuget\\packages\\raylib-cs\\8.0.0\\raylib-cs.8.0.0.nupkg.sha512"
   ],
   "logs": []
 }

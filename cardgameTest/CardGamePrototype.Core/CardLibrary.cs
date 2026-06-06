@@ -8,6 +8,7 @@ namespace CardGamePrototype.Core
             yield return Firebolt();
             yield return Push();
             yield return FrostNova();
+            yield return BioSpore();
         }
 
         public static CardDefinition Ignite()
@@ -17,12 +18,13 @@ namespace CardGamePrototype.Core
                 Id = "ignite",
                 Name = "Ignite",
                 Cost = 1,
-                CardType = CardType.Catalyst
+                CardType = CardType.Incantation,
+                ResolutionRole = CardResolutionRole.Catalyst
             };
-            c.Effects.Add(new EffectDefinition
+            c.CatalystEffects.Add(new EffectDefinition
             {
-                Type = EffectType.ApplyStatus,
-                Status = StatusId.Burn,
+                Type = EffectType.ApplyElement,
+                Element = ElementType.Fire,
                 Value = 2,
                 Target = TargetType.Enemy
             });
@@ -36,21 +38,22 @@ namespace CardGamePrototype.Core
                 Id = "firebolt",
                 Name = "Firebolt",
                 Cost = 1,
-                CardType = CardType.Executioner
+                CardType = CardType.Incantation,
+                ResolutionRole = CardResolutionRole.Executioner
             };
-            c.Effects.Add(new EffectDefinition
+            c.ExecutionerEffects.Add(new EffectDefinition
             {
                 Type = EffectType.Damage,
                 Value = 6,
                 Target = TargetType.Enemy
             });
 
-            c.Effects.Add(new EffectDefinition
+            c.ExecutionerEffects.Add(new EffectDefinition
             {
                 Type = EffectType.ConditionalDamage,
                 Value = 12,
                 Target = TargetType.Enemy,
-                ConditionStatus = StatusId.Burn,
+                ConditionElement = ElementType.Fire,
                 ConditionStacks = 1,
                 ConsumeStacks = 1
             });
@@ -65,16 +68,17 @@ namespace CardGamePrototype.Core
                 Id = "push",
                 Name = "Push",
                 Cost = 1,
-                CardType = CardType.Utility
+                CardType = CardType.Strike,
+                ResolutionRole = CardResolutionRole.Both
             };
-            c.Effects.Add(new EffectDefinition
+            c.CatalystEffects.Add(new EffectDefinition
             {
                 Type = EffectType.Move,
                 Value = 1,
                 Target = TargetType.Enemy
             });
 
-            c.Effects.Add(new EffectDefinition
+            c.ExecutionerEffects.Add(new EffectDefinition
             {
                 Type = EffectType.ConditionalDamage,
                 Value = 4,
@@ -92,23 +96,56 @@ namespace CardGamePrototype.Core
                 Id = "frost_nova",
                 Name = "Frost Nova",
                 Cost = 2,
-                CardType = CardType.Hybrid
+                CardType = CardType.Incantation,
+                ResolutionRole = CardResolutionRole.Both
             };
-            c.Effects.Add(new EffectDefinition
+            c.CatalystEffects.Add(new EffectDefinition
             {
-                Type = EffectType.ApplyStatus,
-                Status = StatusId.Frost,
+                Type = EffectType.ApplyElement,
+                Element = ElementType.Frost,
                 Value = 1,
                 Target = TargetType.Enemy
             });
 
-            c.Effects.Add(new EffectDefinition
+            c.ExecutionerEffects.Add(new EffectDefinition
             {
                 Type = EffectType.ConditionalDamage,
                 Value = 10,
                 Target = TargetType.Enemy,
-                ConditionStatus = StatusId.Frost,
+                ConditionElement = ElementType.Frost,
                 ConditionStacks = 1
+            });
+
+            return c;
+        }
+
+        public static CardDefinition BioSpore()
+        {
+            var c = new CardDefinition
+            {
+                Id = "bio_spore",
+                Name = "Bio Spore",
+                Cost = 1,
+                CardType = CardType.Construct,
+                ResolutionRole = CardResolutionRole.Both
+            };
+
+            c.CatalystEffects.Add(new EffectDefinition
+            {
+                Type = EffectType.ApplyElement,
+                Element = ElementType.Bio,
+                Value = 1,
+                Target = TargetType.Enemy
+            });
+
+            c.ExecutionerEffects.Add(new EffectDefinition
+            {
+                Type = EffectType.ConditionalDamage,
+                Target = TargetType.Enemy,
+                Value = 8,
+                ConditionElement = ElementType.Bio,
+                ConditionStacks = 1,
+                ConsumeStacks = 1
             });
 
             return c;

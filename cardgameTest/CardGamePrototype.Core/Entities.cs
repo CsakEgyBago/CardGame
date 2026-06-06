@@ -7,7 +7,7 @@ namespace CardGamePrototype.Core
         public int Hp { get; set; }
         public int Position { get; set; }
 
-        public StatusCollection Statuses { get; } = new StatusCollection();
+        public ElementCollection ActiveElements { get; } = new ElementCollection();
 
         public Entity(string name, int maxHp, int position)
         {
