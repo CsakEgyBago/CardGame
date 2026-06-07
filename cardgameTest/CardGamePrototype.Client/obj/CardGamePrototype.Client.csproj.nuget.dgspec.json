@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Furrypics\\CardGame\\cardgameTest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj": {}
+    "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj": {}
   },
   "projects": {
-    "D:\\Furrypics\\CardGame\\cardgameTest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj": {
+    "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Furrypics\\CardGame\\cardgameTest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj",
+        "projectUniqueName": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj",
         "projectName": "CardGamePrototype.Client",
-        "projectPath": "D:\\Furrypics\\CardGame\\cardgameTest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj",
-        "packagesPath": "C:\\Users\\bagoa\\.nuget\\packages\\",
-        "outputPath": "D:\\Furrypics\\CardGame\\cardgameTest\\CardGamePrototype.Client\\obj\\",
+        "projectPath": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj",
+        "packagesPath": "C:\\Users\\Gamer\\.nuget\\packages\\",
+        "outputPath": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Client\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\bagoa\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Gamer\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -26,15 +26,15 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net10.0": {
+            "framework": "net10.0",
             "targetAlias": "net10.0",
             "projectReferences": {
-              "D:\\Furrypics\\CardGame\\cardgameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj": {
-                "projectPath": "D:\\Furrypics\\CardGame\\cardgameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj"
+              "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj": {
+                "projectPath": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj"
               }
             }
           }
@@ -49,10 +49,11 @@
           "auditLevel": "low",
           "auditMode": "all"
         },
-        "SdkAnalysisLevel": "10.0.200"
+        "SdkAnalysisLevel": "10.0.300"
       },
       "frameworks": {
         "net10.0": {
+          "framework": "net10.0",
           "targetAlias": "net10.0",
           "dependencies": {
             "Raylib-cs": {
@@ -76,7 +77,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.202/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",
@@ -354,20 +355,20 @@
         }
       }
     },
-    "D:\\Furrypics\\CardGame\\cardgameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj": {
+    "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Furrypics\\CardGame\\cardgameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj",
+        "projectUniqueName": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj",
         "projectName": "CardGamePrototype.Core",
-        "projectPath": "D:\\Furrypics\\CardGame\\cardgameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj",
-        "packagesPath": "C:\\Users\\bagoa\\.nuget\\packages\\",
-        "outputPath": "D:\\Furrypics\\CardGame\\cardgameTest\\CardGamePrototype.Core\\obj\\",
+        "projectPath": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj",
+        "packagesPath": "C:\\Users\\Gamer\\.nuget\\packages\\",
+        "outputPath": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Core\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\bagoa\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Gamer\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -376,11 +377,11 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net10.0": {
+            "framework": "net10.0",
             "targetAlias": "net10.0",
             "projectReferences": {}
           }
@@ -395,10 +396,11 @@
           "auditLevel": "low",
           "auditMode": "all"
         },
-        "SdkAnalysisLevel": "10.0.200"
+        "SdkAnalysisLevel": "10.0.300"
       },
       "frameworks": {
         "net10.0": {
+          "framework": "net10.0",
           "targetAlias": "net10.0",
           "imports": [
             "net461",
@@ -416,7 +418,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.202/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",
