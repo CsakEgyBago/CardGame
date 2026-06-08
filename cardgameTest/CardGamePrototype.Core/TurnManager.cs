@@ -51,17 +51,17 @@ namespace CardGamePrototype.Core
 
             var card = state.Hand[handIndex];
 
-            int placementCost =
-                card.Cost + state.PlacementsThisTurn;
+            int placementCost = card.Cost + state.PlacementsThisTurn;
 
             if (placementCost > state.Player.Energy)
                 return false;
 
             state.Player.Energy -= placementCost;
-
             state.PlacementsThisTurn++;
 
-            slot.Card = card;
+            // NEW: Instantiates the entity onto the board with HP
+            int minionHp = 10; 
+            slot.Occupant = new SummonedEntity(card.Name, minionHp, slotIndex, card);
 
             state.Hand.RemoveAt(handIndex);
 
@@ -85,17 +85,16 @@ namespace CardGamePrototype.Core
             if (!slot.IsOccupied)
                 return false;
 
-            int executeCost =
-                state.ExecutionsThisTurn / 2;
+            int executeCost = state.ExecutionsThisTurn / 2;
 
             if (executeCost > state.Player.Energy)
                 return false;
 
             state.Player.Energy -= executeCost;
-
             state.ExecutionsThisTurn++;
 
-            var card = slot.Card!;
+            // Extracts the original card data from the living minion
+            var card = slot.Occupant!.SourceCard;
 
             foreach (var effect in card.ExecutionerEffects)
             {
@@ -104,7 +103,8 @@ namespace CardGamePrototype.Core
 
             state.BurnPile.Add(card);
 
-            slot.Card = null;
+            // Clears the minion off the board
+            slot.Occupant = null;
 
             return true;
         }

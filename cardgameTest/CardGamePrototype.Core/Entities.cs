@@ -34,4 +34,17 @@ namespace CardGamePrototype.Core
         {
         }
     }
+
+    public class SummonedEntity : Entity
+    {
+        public CardDefinition SourceCard { get; }
+        public int BaseAttack { get; set; }
+
+        public SummonedEntity(string name, int maxHp, int position, CardDefinition sourceCard) 
+            : base(name, maxHp, position)
+        {
+            SourceCard = sourceCard;
+            BaseAttack = 2; 
+        }
+    }
 }

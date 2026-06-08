@@ -17,6 +17,7 @@ namespace CardGamePrototype.Core
             {
                 Id = "ignite",
                 Name = "Ignite",
+                Description = "Applies 2 Fire to the enemy.",
                 Cost = 1,
                 CardType = CardType.Incantation,
                 ResolutionRole = CardResolutionRole.Catalyst
@@ -37,6 +38,7 @@ namespace CardGamePrototype.Core
             {
                 Id = "firebolt",
                 Name = "Firebolt",
+                Description = "Deal 6 DMG. (12 if target\nhas Fire).",
                 Cost = 1,
                 CardType = CardType.Incantation,
                 ResolutionRole = CardResolutionRole.Executioner
@@ -67,6 +69,7 @@ namespace CardGamePrototype.Core
             {
                 Id = "push",
                 Name = "Push",
+                Description = "Push enemy back 1 space.\nDeals 4 DMG at edge.",
                 Cost = 1,
                 CardType = CardType.Strike,
                 ResolutionRole = CardResolutionRole.Both
@@ -95,6 +98,7 @@ namespace CardGamePrototype.Core
             {
                 Id = "frost_nova",
                 Name = "Frost Nova",
+                Description = "Apply 1 Frost. Deals 10 DMG\nif enemy has Frost.",
                 Cost = 2,
                 CardType = CardType.Incantation,
                 ResolutionRole = CardResolutionRole.Both
@@ -125,6 +129,7 @@ namespace CardGamePrototype.Core
             {
                 Id = "bio_spore",
                 Name = "Bio Spore",
+                Description = "Apply 1 Bio. Deals 8 DMG\nif enemy has Bio.",
                 Cost = 1,
                 CardType = CardType.Construct,
                 ResolutionRole = CardResolutionRole.Both
