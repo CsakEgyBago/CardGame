@@ -79,6 +79,69 @@ class Program
         Raylib.DrawText(cost.ToString(), (int)(badgeCenter.X - 14), (int)(badgeCenter.Y - 6), 12, Color.White);
     }
 
+    static Color CardColorFromName(string name) => name switch
+    {
+        "Ignite"    => new Color(235, 95, 15, 255),
+        "Firebolt"  => new Color(255, 145, 35, 255),
+        "Frost Nova" or "FrostNova" => new Color(65, 175, 240, 255),
+        "Push"      => new Color(155, 75, 215, 255),
+        "Bio Spore" or "BioSpore"   => new Color(45, 200, 65, 255),
+        _           => new Color(140, 145, 165, 255)
+    };
+
+    static void DrawSummonedUnit(Rectangle zone, string cardName, int hp, int maxHp, bool selected)
+    {
+        Color col = CardColorFromName(cardName);
+        Raylib.DrawRectangleRounded(zone, 0.12f, 6, new Color(col.R / 5, col.G / 5, col.B / 5, 255));
+        Raylib.DrawRectangleRoundedLinesEx(zone, 0.12f, 6, selected ? 3 : 2, selected ? Color.Gold : col);
+
+        float cx = zone.X + zone.Width / 2f;
+        float cy = zone.Y + zone.Height * 0.42f;
+        float r = Math.Min(zone.Width, zone.Height) * 0.27f;
+
+        if (cardName is "Ignite" or "Firebolt")
+        {
+            // Flame: two stacked upward triangles
+            Raylib.DrawTriangle(new Vector2(cx, cy - r), new Vector2(cx - r * 0.55f, cy + r * 0.5f), new Vector2(cx + r * 0.55f, cy + r * 0.5f), col);
+            Raylib.DrawTriangle(new Vector2(cx, cy - r * 0.3f), new Vector2(cx - r * 0.28f, cy + r * 0.9f), new Vector2(cx + r * 0.28f, cy + r * 0.9f), new Color(255, 215, 60, 210));
+        }
+        else if (cardName is "Frost Nova" or "FrostNova")
+        {
+            // Snowflake: 4-axis cross
+            Raylib.DrawLineEx(new Vector2(cx - r, cy), new Vector2(cx + r, cy), 3f, col);
+            Raylib.DrawLineEx(new Vector2(cx, cy - r), new Vector2(cx, cy + r), 3f, col);
+            Raylib.DrawLineEx(new Vector2(cx - r * 0.72f, cy - r * 0.72f), new Vector2(cx + r * 0.72f, cy + r * 0.72f), 3f, col);
+            Raylib.DrawLineEx(new Vector2(cx + r * 0.72f, cy - r * 0.72f), new Vector2(cx - r * 0.72f, cy + r * 0.72f), 3f, col);
+        }
+        else if (cardName is "Push")
+        {
+            // Arrow: right-facing chevron + tail
+            Raylib.DrawTriangle(new Vector2(cx + r, cy), new Vector2(cx - r * 0.3f, cy - r * 0.7f), new Vector2(cx - r * 0.3f, cy + r * 0.7f), col);
+            Raylib.DrawRectangleRec(new Rectangle(cx - r, cy - r * 0.22f, r * 0.78f, r * 0.44f), col);
+        }
+        else if (cardName is "Bio Spore" or "BioSpore")
+        {
+            // Bio: concentric rings + nucleus
+            Raylib.DrawCircleLines((int)cx, (int)cy, r, col);
+            Raylib.DrawCircleLines((int)cx, (int)cy, r * 0.58f, col);
+            Raylib.DrawCircleV(new Vector2(cx, cy), r * 0.24f, col);
+        }
+        else
+        {
+            // Generic: diamond
+            Raylib.DrawTriangle(new Vector2(cx, cy - r), new Vector2(cx - r * 0.55f, cy), new Vector2(cx + r * 0.55f, cy), col);
+            Raylib.DrawTriangle(new Vector2(cx, cy + r), new Vector2(cx + r * 0.55f, cy), new Vector2(cx - r * 0.55f, cy), col);
+        }
+
+        int nw = Raylib.MeasureText(cardName, 11);
+        Raylib.DrawText(cardName, (int)(zone.X + (zone.Width - nw) / 2), (int)(zone.Y + zone.Height - 30), 11, Color.White);
+
+        float bx = zone.X + 5, by = zone.Y + zone.Height - 16, bw = zone.Width - 10, bh = 7;
+        Raylib.DrawRectangleRec(new Rectangle(bx, by, bw, bh), new Color(38, 38, 38, 220));
+        if (maxHp > 0)
+            Raylib.DrawRectangleRec(new Rectangle(bx, by, bw * ((float)hp / maxHp), bh), new Color(50, 215, 80, 255));
+    }
+
     // Handles the positioning math for the 5-Branch Skill Tree
     static Vector2 GetSkillNodePos(SkillNode node, int originX, int originY)
     {
@@ -279,6 +342,14 @@ class Program
                     int cpH = 72, cpW = sideW - 20;
                     bool showBattleGrid = dragging;
 
+                    int hoveredHandCard = -1;
+                    if (!dragging)
+                        for (int j = 0; j < activeBattleState.Hand.Count; j++)
+                        {
+                            Rectangle hcr = new Rectangle(10, 85 + j * (cpH + 6), cpW, cpH);
+                            if (Raylib.CheckCollisionPointRec(mouse, hcr)) { hoveredHandCard = j; break; }
+                        }
+
                     // === LEFT SIDEBAR: Player Hand ===
                     Raylib.DrawRectangle(0, 0, sideW, height, new Color(18, 20, 25, 255));
                     Raylib.DrawLine(sideW, 0, sideW, height, new Color(50, 55, 65, 255));
@@ -292,7 +363,7 @@ class Program
                         if (dragging && i == draggingIndex) continue;
                         Rectangle cr = new Rectangle(10, 85 + i * (cpH + 6), cpW, cpH);
                         var hc = activeBattleState.Hand[i];
-                        DrawCard(cr, hc.Name, hc.Description, hc.Cost, Color.White, Color.Black);
+                        DrawCard(cr, hc.Name, hc.Description, hc.Cost, Color.White, i == hoveredHandCard ? Color.Gold : Color.Black);
                         if (Raylib.IsMouseButtonPressed(MouseButton.Left) && Raylib.CheckCollisionPointRec(mouse, cr) && !dragging)
                         {
                             dragging = true;
@@ -417,7 +488,7 @@ class Program
                             {
                                 var occ = activeBattleState.PlayerBoard[i].Occupant!;
                                 bool uSel = activeBattleState.SelectedBoardSlot == i;
-                                DrawCard(new Rectangle(dropZone.X + 2, dropZone.Y + 2, dropZone.Width - 4, dropZone.Height - 4), occ.SourceCard.Name, $"HP:{occ.Hp}", occ.SourceCard.Cost, new Color(50, 55, 68, 255), Color.SkyBlue, uSel);
+                                DrawSummonedUnit(new Rectangle(dropZone.X + 2, dropZone.Y + 2, dropZone.Width - 4, dropZone.Height - 4), occ.SourceCard.Name, occ.Hp, occ.MaxHp, uSel);
                             }
                         }
 
@@ -441,6 +512,24 @@ class Program
                             draggingIndex = -1;
                         }
                     }
+                    else if (hoveredHandCard >= 0 && hoveredHandCard < activeBattleState.Hand.Count)
+                    {
+                        // Dim center and show expanded card preview
+                        Raylib.DrawRectangle(cx, 0, cw, height - 50, new Color(14, 15, 20, 175));
+                        var previewCard = activeBattleState.Hand[hoveredHandCard];
+                        int pvW = 240, pvH = 320;
+                        Rectangle pvRect = new Rectangle(cx + (cw - pvW) / 2, height / 2 - pvH / 2, pvW, pvH);
+                        DrawCard(pvRect, previewCard.Name, previewCard.Description, previewCard.Cost, Color.White, Color.Gold);
+                        int pwl = Raylib.MeasureText("drag to play", 14);
+                        Raylib.DrawText("drag to play", (int)(pvRect.X + (pvW - pwl) / 2), (int)(pvRect.Y + pvH + 10), 14, Color.Gray);
+                        if (Raylib.IsMouseButtonPressed(MouseButton.Left) && Raylib.CheckCollisionPointRec(mouse, pvRect) && !dragging)
+                        {
+                            dragging = true;
+                            draggingIndex = hoveredHandCard;
+                            isDraggingFromCollectionPool = false;
+                            dragOffset = mouse - new Vector2(pvRect.X, pvRect.Y);
+                        }
+                    }
                     else
                     {
                         // Yellow "Battlefield" banner
@@ -450,10 +539,10 @@ class Program
                         Raylib.DrawRectangleRec(banner, new Color(255, 195, 45, 255));
                         int btw = Raylib.MeasureText("Battlefield", 60);
                         Raylib.DrawText("Battlefield", (int)(banner.X + (banW - btw) / 2), (int)(banner.Y + banH / 2 - 35), 60, Color.Black);
-
-                        if (DrawButton(new Rectangle(cx + cw / 2 - 90, height - 95, 180, 42), "END TURN", new Color(50, 70, 42, 255), new Color(68, 100, 58, 255)))
-                            battleService.EndTurn();
                     }
+
+                    if (activeBattleState.Phase == TurnPhase.PlayerTurn && DrawButton(new Rectangle(cx + cw / 2 - 90, height - 95, 180, 42), "END TURN", new Color(50, 70, 42, 255), new Color(68, 100, 58, 255)))
+                        battleService.EndTurn();
 
                     // Center bottom HUD
                     Raylib.DrawRectangle(cx, height - 50, cw, 50, new Color(12, 13, 17, 220));
