@@ -1,5 +1,4 @@
-﻿using System;
-using System.Numerics;
+﻿using System.Numerics;
 using Raylib_cs;
 using CardGamePrototype.Core;
 
@@ -12,72 +11,385 @@ namespace CardGamePrototype.Client
             var service = new BattleService();
             service.NewBattle();
 
-            Raylib.InitWindow(800, 600, "Catalyst -> Executioner Prototype");
+            Raylib.InitWindow(1600, 900, "Catalyst Prototype");
+
+            Raylib.SetWindowState(ConfigFlags.ResizableWindow);
+
             Raylib.SetTargetFPS(60);
 
             while (!Raylib.WindowShouldClose())
             {
-                // Input
-                if (Raylib.IsKeyPressed(KeyboardKey.Escape)) break;
-                if (Raylib.IsKeyPressed(KeyboardKey.R)) service.Restart();
-                if (Raylib.IsKeyPressed(KeyboardKey.Space)) service.EndTurn();
+                var state = service.State;
 
-                // Number keys 1-5 to play cards
-                for (int i = 0; i < 5; i++)
+                if (Raylib.IsKeyPressed(KeyboardKey.R))
+                    service.Restart();
+
+                if (Raylib.IsKeyPressed(KeyboardKey.Enter))
+                    service.EndTurn();
+
+                if (Raylib.IsKeyPressed(KeyboardKey.Space))
                 {
-                    var key = KeyboardKey.One + i;
-                    if (Raylib.IsKeyPressed(key)) service.PlayCard(i);
+                    if (state.SelectedBoardSlot >= 0)
+                    {
+                        service.ExecuteCard(
+                            state.SelectedBoardSlot);
+
+                        state.SelectedBoardSlot = -1;
+                    }
                 }
 
-                // Render
+                int width = Raylib.GetScreenWidth();
+                int height = Raylib.GetScreenHeight();
+
+                float boardY = height * 0.40f;
+                float handY = height * 0.72f;
+
+                const int slotWidth = 220;
+                const int slotHeight = 140;
+
+                const int cardWidth = 180;
+                const int cardHeight = 120;
+
+                Vector2 mouse = Raylib.GetMousePosition();
+
+                if (Raylib.IsMouseButtonPressed(MouseButton.Left))
+                {
+                    bool handled = false;
+
+                    // HAND SELECTION
+
+                    for (int i = 0; i < state.Hand.Count; i++)
+                    {
+                        int x = 40 + i * (cardWidth + 20);
+
+                        Rectangle rect =
+                            new Rectangle(
+                                x,
+                                handY,
+                                cardWidth,
+                                cardHeight);
+
+                        if (Raylib.CheckCollisionPointRec(mouse, rect))
+                        {
+                            state.SelectedHandCard = i;
+                            handled = true;
+                            break;
+                        }
+                    }
+
+                    // BOARD SLOT INTERACTION
+
+                    if (!handled)
+                    {
+                        int startX =
+                            width / 2 -
+                            ((slotWidth * 3) + 40) / 2;
+
+                        for (int i = 0; i < 3; i++)
+                        {
+                            int x =
+                                startX +
+                                i * (slotWidth + 20);
+
+                            Rectangle slotRect =
+                                new Rectangle(
+                                    x,
+                                    boardY,
+                                    slotWidth,
+                                    slotHeight);
+
+                            if (!Raylib.CheckCollisionPointRec(
+                                mouse,
+                                slotRect))
+                                continue;
+
+                            // place card
+
+                            if (state.SelectedHandCard >= 0)
+                            {
+                                bool placed =
+                                    service.PlaceCard(
+                                        state.SelectedHandCard,
+                                        i);
+
+                                if (placed)
+                                {
+                                    state.SelectedHandCard = -1;
+                                }
+
+                                handled = true;
+                                break;
+                            }
+
+                            // select board card
+
+                            if (state.PlayerBoard[i].IsOccupied)
+                            {
+                                state.SelectedBoardSlot = i;
+                            }
+                            else
+                            {
+                                state.SelectedBoardSlot = -1;
+                            }
+
+                            handled = true;
+                            break;
+                        }
+                    }
+                }
+
                 Raylib.BeginDrawing();
+
                 Raylib.ClearBackground(Color.DarkGray);
 
-                var s = service.State;
-                // Player info
-                Raylib.DrawText($"Player HP: {s.Player.Hp}/{s.Player.MaxHp}", 20, 20, 20, Color.White);
-                Raylib.DrawText($"Energy: {s.Player.Energy}", 20, 46, 18, Color.LightGray);
-                Raylib.DrawText($"Position: {s.Player.Position}", 20, 70, 18, Color.LightGray);
+                // =====================
+                // PLAYER INFO
+                // =====================
 
-                // Enemy info
-                Raylib.DrawText($"Enemy HP: {s.Enemy.Hp}/{s.Enemy.MaxHp}", 400, 20, 20, Color.White);
-                Raylib.DrawText($"Position: {s.Enemy.Position}", 400, 46, 18, Color.LightGray);
-                Raylib.DrawText($"Fire: {s.Enemy.ActiveElements.GetStacks(ElementType.Fire)}", 400, 70, 18, Color.Orange);
-                Raylib.DrawText($"Frost: {s.Enemy.ActiveElements.GetStacks(ElementType.Frost)}", 400, 92, 18, Color.SkyBlue);
-                Raylib.DrawText($"Bio: {s.Enemy.ActiveElements.GetStacks(ElementType.Bio)}", 400, 114, 18, Color.Lime);
+                Raylib.DrawText(
+                    $"Player HP: {state.Player.Hp}/{state.Player.MaxHp}",
+                    20,
+                    20,
+                    28,
+                    Color.White);
 
-                // Board positions
-                int baseX = 200; int baseY = 200; int cellW = 80;
-                for (int i = 0; i < s.BoardSize; i++)
+                Raylib.DrawText(
+                    $"Energy: {state.Player.Energy}",
+                    20,
+                    55,
+                    24,
+                    Color.Gold);
+
+                // =====================
+                // ENEMY INFO
+                // =====================
+
+                Raylib.DrawText(
+                    $"Enemy HP: {state.Enemy.Hp}/{state.Enemy.MaxHp}",
+                    width - 350,
+                    20,
+                    28,
+                    Color.White);
+
+                Raylib.DrawText(
+                    $"Position: {state.Enemy.Position}",
+                    width - 350,
+                    55,
+                    24,
+                    Color.White);
+
+                Raylib.DrawText(
+                    $"Fire: {state.Enemy.ActiveElements.GetStacks(ElementType.Fire)}",
+                    width - 350,
+                    90,
+                    22,
+                    Color.Orange);
+
+                Raylib.DrawText(
+                    $"Frost: {state.Enemy.ActiveElements.GetStacks(ElementType.Frost)}",
+                    width - 350,
+                    120,
+                    22,
+                    Color.SkyBlue);
+
+                Raylib.DrawText(
+                    $"Bio: {state.Enemy.ActiveElements.GetStacks(ElementType.Bio)}",
+                    width - 350,
+                    150,
+                    22,
+                    Color.Lime);
+
+                // =====================
+                // ENEMY LANE
+                // =====================
+
+                int laneStart =
+                    width / 2 - 300;
+
+                for (int i = 0; i < 5; i++)
                 {
-                    int x = baseX + i * (cellW + 10);
-                    Raylib.DrawRectangle(x, baseY, cellW, 120, Color.LightGray);
-                    Raylib.DrawText(i.ToString(), x + 6, baseY + 6, 20, Color.Black);
-                }
-                // draw player/enemy in cells
-                Raylib.DrawText("P", baseX + s.Player.Position * (cellW + 10) + 32, baseY + 40, 28, Color.Blue);
-                Raylib.DrawText("E", baseX + s.Enemy.Position * (cellW + 10) + 32, baseY + 40, 28, Color.Red);
+                    int x =
+                        laneStart +
+                        i * 120;
 
-                // Hand
-                int handX = 20; int handY = 360; int cw = 140; int ch = 100; int gap = 10;
-                for (int i = 0; i < s.Hand.Count; i++)
+                    Raylib.DrawRectangleLines(
+                        x,
+                        180,
+                        100,
+                        80,
+                        Color.LightGray);
+
+                    Raylib.DrawText(
+                        i.ToString(),
+                        x + 8,
+                        188,
+                        20,
+                        Color.LightGray);
+                }
+
+                int enemyX =
+                    laneStart +
+                    state.Enemy.Position * 120 +
+                    40;
+
+                Raylib.DrawText(
+                    "E",
+                    enemyX,
+                    210,
+                    40,
+                    Color.Red);
+
+                // =====================
+                // BOARD
+                // =====================
+
+                Raylib.DrawText(
+                    "BOARD",
+                    width / 2 - 60,
+                    (int)boardY - 40,
+                    24,
+                    Color.White);
+
+                int boardStart =
+                    width / 2 -
+                    ((slotWidth * 3) + 40) / 2;
+
+                for (int i = 0; i < 3; i++)
                 {
-                    var c = s.Hand[i];
-                    int x = handX + i * (cw + gap);
-                    Raylib.DrawRectangle(x, handY, cw, ch, Color.RayWhite);
-                    Raylib.DrawRectangleLines(x, handY, cw, ch, Color.DarkGray);
-                    Raylib.DrawText(c.Name, x + 6, handY + 6, 16, Color.Black);
-                    Raylib.DrawText($"Cost: {c.Cost}", x + 6, handY + 28, 14, Color.DarkGray);
-                    Raylib.DrawText($"C:{c.CatalystEffects.Count} E:{c.ExecutionerEffects.Count}", x + 6, handY + 48, 12, Color.DarkGray);
-                    Raylib.DrawText(c.CardType.ToString(), x + 6, handY + 64, 12, Color.DarkGray);
-                    Raylib.DrawText((i + 1).ToString(), x + cw - 24, handY + 6, 20, Color.DarkBlue);
+                    int x =
+                        boardStart +
+                        i * (slotWidth + 20);
+
+                    Color outline =
+                        state.SelectedBoardSlot == i
+                            ? Color.Green
+                            : Color.LightGray;
+
+                    Raylib.DrawRectangleLinesEx(
+                        new Rectangle(
+                            x,
+                            boardY,
+                            slotWidth,
+                            slotHeight),
+                        3,
+                        outline);
+
+                    var slot =
+                        state.PlayerBoard[i];
+
+                    if (slot.IsOccupied)
+                    {
+                        var card =
+                            slot.Card!;
+
+                        Raylib.DrawText(
+                            card.Name,
+                            x + 10,
+                            (int)boardY + 10,
+                            22,
+                            Color.White);
+
+                        Raylib.DrawText(
+                            $"Age: {slot.TurnsOnBoard}",
+                            x + 10,
+                            (int)boardY + 45,
+                            18,
+                            Color.LightGray);
+                    }
                 }
 
-                // Status
-                string status = s.Phase == TurnPhase.Finished
-                    ? (s.Player.IsDead ? "Defeat - Press R to restart" : "Victory - Press R to restart")
-                    : "";
-                Raylib.DrawText(status, 20, 520, 20, Color.Yellow);
+                // =====================
+                // HAND
+                // =====================
+
+                Raylib.DrawText(
+                    "HAND",
+                    40,
+                    (int)handY - 40,
+                    24,
+                    Color.White);
+
+                for (int i = 0; i < state.Hand.Count; i++)
+                {
+                    int x =
+                        40 +
+                        i * (cardWidth + 20);
+
+                    Color border =
+                        state.SelectedHandCard == i
+                            ? Color.Gold
+                            : Color.Black;
+
+                    Raylib.DrawRectangle(
+                        x,
+                        (int)handY,
+                        cardWidth,
+                        cardHeight,
+                        Color.RayWhite);
+
+                    Raylib.DrawRectangleLinesEx(
+                        new Rectangle(
+                            x,
+                            handY,
+                            cardWidth,
+                            cardHeight),
+                        4,
+                        border);
+
+                    var card =
+                        state.Hand[i];
+
+                    Raylib.DrawText(
+                        card.Name,
+                        x + 10,
+                        (int)handY + 10,
+                        20,
+                        Color.Black);
+
+                    Raylib.DrawText(
+                        $"Cost {card.Cost}",
+                        x + 10,
+                        (int)handY + 40,
+                        18,
+                        Color.DarkGray);
+
+                    Raylib.DrawText(
+                        card.CardType.ToString(),
+                        x + 10,
+                        (int)handY + 70,
+                        18,
+                        Color.DarkGray);
+                }
+
+                // =====================
+                // BURN PILE
+                // =====================
+
+                Raylib.DrawText(
+                    $"Burned: {state.BurnPile.Count}",
+                    20,
+                    height - 40,
+                    22,
+                    Color.Orange);
+
+                // =====================
+                // STATUS
+                // =====================
+
+                if (state.Phase == TurnPhase.Finished)
+                {
+                    string msg =
+                        state.Player.IsDead
+                            ? "Defeat"
+                            : "Victory";
+
+                    Raylib.DrawText(
+                        msg,
+                        width / 2 - 80,
+                        40,
+                        40,
+                        Color.Yellow);
+                }
 
                 Raylib.EndDrawing();
             }

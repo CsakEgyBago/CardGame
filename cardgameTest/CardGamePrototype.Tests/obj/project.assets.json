@@ -859,11 +859,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Tests\\CardGamePrototype.Tests.csproj",
+      "projectUniqueName": "D:\\mcm\\CardGame\\CardGameTest\\CardGamePrototype.Tests\\CardGamePrototype.Tests.csproj",
       "projectName": "CardGamePrototype.Tests",
-      "projectPath": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Tests\\CardGamePrototype.Tests.csproj",
+      "projectPath": "D:\\mcm\\CardGame\\CardGameTest\\CardGamePrototype.Tests\\CardGamePrototype.Tests.csproj",
       "packagesPath": "C:\\Users\\Gamer\\.nuget\\packages\\",
-      "outputPath": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Tests\\obj\\",
+      "outputPath": "D:\\mcm\\CardGame\\CardGameTest\\CardGamePrototype.Tests\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -885,8 +885,8 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "projectReferences": {
-            "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj": {
-              "projectPath": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj"
+            "D:\\mcm\\CardGame\\CardGameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj": {
+              "projectPath": "D:\\mcm\\CardGame\\CardGameTest\\CardGamePrototype.Core\\CardGamePrototype.Core.csproj"
             }
           }
         }
