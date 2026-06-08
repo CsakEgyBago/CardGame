@@ -20,24 +20,16 @@ public class CampaignNode
 public class PlayerProfile
 {
     public int Gold { get; set; } = 150;
-    public int SkillPoints { get; set; } = 8; // Bumped up so you can test QOL unlocking
+    public int SkillPoints { get; set; } = 8;
     public List<CardDefinition> TotalCollection { get; set; } = new();
     public List<CardDefinition> ActiveDeck { get; set; } = new();
-    
-    // NEW: Skill Tree Instance
     public SkillTreeManager SkillTree { get; set; } = new();
 
-    // Helper properties to calculate live stats based on unlocked nodes
-    public int MaxEnergyBonus => SkillTree.Nodes.Find(n => n.Id == 1 && n.IsUnlocked) != null ? 1 : 0 
-                               + (SkillTree.Nodes.Find(n => n.Id == 2 && n.IsUnlocked) != null ? 1 : 0)
-                               + (SkillTree.Nodes.Find(n => n.Id == 3 && n.IsUnlocked) != null ? 2 : 0);
-                               
-    public int MaxHpBonus => (SkillTree.Nodes.Find(n => n.Id == 11 && n.IsUnlocked) != null ? 10 : 0)
-                             + (SkillTree.Nodes.Find(n => n.Id == 12 && n.IsUnlocked) != null ? 15 : 0)
-                             + (SkillTree.Nodes.Find(n => n.Id == 13 && n.IsUnlocked) != null ? 25 : 0);
-                             
-    public int StartCardsBonus => (SkillTree.Nodes.Find(n => n.Id == 4 && n.IsUnlocked) != null ? 1 : 0)
-                                + (SkillTree.Nodes.Find(n => n.Id == 5 && n.IsUnlocked) != null ? 1 : 0);
+    bool HasNode(int id) => SkillTree.Nodes.Find(n => n.Id == id)?.IsUnlocked == true;
+
+    public int MaxEnergyBonus  => (HasNode(1) ? 1 : 0) + (HasNode(2) ? 1 : 0) + (HasNode(3) ? 2 : 0);
+    public int MaxHpBonus      => (HasNode(11) ? 10 : 0) + (HasNode(12) ? 15 : 0) + (HasNode(13) ? 25 : 0);
+    public int StartCardsBonus => (HasNode(4) ? 1 : 0) + (HasNode(5) ? 1 : 0);
 }
 
 class Program
@@ -142,26 +134,47 @@ class Program
             Raylib.DrawRectangleRec(new Rectangle(bx, by, bw * ((float)hp / maxHp), bh), new Color(50, 215, 80, 255));
     }
 
-    // Handles the positioning math for the 5-Branch Skill Tree
-    static Vector2 GetSkillNodePos(SkillNode node, int originX, int originY)
+    // Radial skill tree layout — 5 branches fan out 72° apart from the origin node
+    static Vector2 GetSkillNodePos(SkillNode node, float originX, float originY, float spacing = 78f)
     {
-        int colSpacing = 80;
-        int rowSpacing = 65;
-        
-        int x = originX + (node.Column * colSpacing);
-        int yOffset = 0;
-
-        switch (node.Branch)
+        if (node.Branch == SkillBranch.Origin) return new Vector2(originX, originY);
+        float deg = node.Branch switch
         {
-            case SkillBranch.Green: yOffset = -2; break;
-            case SkillBranch.Blue: yOffset = -1; break;
-            case SkillBranch.Red: yOffset = 0; break;
-            case SkillBranch.Yellow: yOffset = 1; break;
-            case SkillBranch.White: yOffset = 2; break;
-            case SkillBranch.Origin: yOffset = 0; break;
-        }
+            SkillBranch.Green  => 270f,
+            SkillBranch.Blue   => 198f,
+            SkillBranch.Red    => 342f,
+            SkillBranch.Yellow => 126f,
+            SkillBranch.White  =>  54f,
+            _ => 0f
+        };
+        float rad = deg * MathF.PI / 180f;
+        return new Vector2(originX + node.Column * spacing * MathF.Cos(rad),
+                           originY + node.Column * spacing * MathF.Sin(rad));
+    }
 
-        return new Vector2(x, originY + (yOffset * rowSpacing));
+    static void DrawNodeIcon(Vector2 c, SkillBranch branch, Color col, float r = 9f)
+    {
+        switch (branch)
+        {
+            case SkillBranch.Origin:
+                Raylib.DrawCircleV(c, r * 0.5f, col); break;
+            case SkillBranch.Green:
+                Raylib.DrawLineEx(new Vector2(c.X + r * 0.25f, c.Y - r), new Vector2(c.X - r * 0.15f, c.Y + r * 0.05f), 2f, col);
+                Raylib.DrawLineEx(new Vector2(c.X - r * 0.15f, c.Y + r * 0.05f), new Vector2(c.X + r * 0.3f, c.Y + r * 0.2f), 2f, col);
+                Raylib.DrawLineEx(new Vector2(c.X + r * 0.3f, c.Y + r * 0.2f), new Vector2(c.X - r * 0.25f, c.Y + r), 2f, col);
+                break;
+            case SkillBranch.Blue:
+                Raylib.DrawCircleLines((int)c.X, (int)c.Y, r * 0.72f, col);
+                Raylib.DrawCircleV(c, r * 0.3f, col); break;
+            case SkillBranch.Red:
+                Raylib.DrawTriangle(new Vector2(c.X, c.Y - r), new Vector2(c.X - r * 0.55f, c.Y + r * 0.65f), new Vector2(c.X + r * 0.55f, c.Y + r * 0.65f), col); break;
+            case SkillBranch.Yellow:
+                Raylib.DrawCircleLines((int)c.X, (int)c.Y, r * 0.68f, col);
+                Raylib.DrawLineEx(new Vector2(c.X, c.Y - r * 0.38f), new Vector2(c.X, c.Y + r * 0.38f), 1.5f, col); break;
+            case SkillBranch.White:
+                Raylib.DrawLineEx(new Vector2(c.X - r, c.Y), new Vector2(c.X + r, c.Y), 2.5f, col);
+                Raylib.DrawLineEx(new Vector2(c.X, c.Y - r), new Vector2(c.X, c.Y + r), 2.5f, col); break;
+        }
     }
 
     static Color GetBranchColor(SkillBranch branch)
@@ -592,108 +605,138 @@ class Program
                     break;
 
                 case GameScene.MarketShop:
-                    Raylib.DrawRectangle(0, 0, width, 60, new Color(18, 20, 24, 255));
-                    Raylib.DrawText($"COMMERCE HUB AND UPGRADE LAB", 30, 18, 20, Color.White);
-                    Raylib.DrawText($"Credits Balance: {profile.Gold}G", width - 420, 20, 18, Color.Gold);
-                    Raylib.DrawText($"Skill points: {profile.SkillPoints}SP", width - 200, 20, 18, Color.SkyBlue);
+                    // Header
+                    Raylib.DrawRectangle(0, 0, width, 58, new Color(15, 17, 22, 255));
+                    Raylib.DrawLine(0, 58, width, 58, new Color(38, 43, 52, 255));
+                    Raylib.DrawText("MARKET  &  SKILL MATRIX", 30, 15, 22, Color.White);
+                    Raylib.DrawText($"{profile.Gold} G", width - 215, 15, 20, Color.Gold);
+                    Raylib.DrawText($"{profile.SkillPoints} SP", width - 100, 15, 20, Color.SkyBlue);
 
-                    if (DrawButton(new Rectangle(40, 90, 160, 40), "< BACK TO MAP", Color.DarkGray, Color.Gray))
+                    if (DrawButton(new Rectangle(30, 74, 160, 38), "< BACK TO MAP", new Color(35, 38, 48, 255), new Color(52, 56, 70, 255)))
                         scene = GameScene.CampaignMap;
 
-                    Raylib.DrawText("AVAILABLE SCHEMA CARDS", 120, 180, 22, Color.Gold);
+                    // Vertical divider
+                    Raylib.DrawLine(width / 2, 60, width / 2, height, new Color(35, 40, 50, 255));
+
+                    // === LEFT HALF: SHOP ===
+                    Raylib.DrawText("SCHEMA CARDS", 110, 132, 18, Color.Gold);
+                    Raylib.DrawLine(110, 156, 110 + shopInventory.Count * 233 - 18, 156, new Color(90, 75, 25, 110));
+
                     for (int i = 0; i < shopInventory.Count; i++)
                     {
-                        int itemX = 120 + i * (220 + 20);
-                        Rectangle displayCardArea = new Rectangle(itemX, 230, 220, 280);
-                        DrawCard(displayCardArea, shopInventory[i].Name, shopInventory[i].Description, shopInventory[i].Cost, Color.White, Color.DarkBlue);
-
-                        Rectangle buyBtn = new Rectangle(itemX, 530, 220, 40);
-                        if (DrawButton(buyBtn, $"Purchase: {cardShopCost}G", new Color(35, 60, 45, 255), new Color(50, 95, 65, 255)))
+                        int sx = 110 + i * 233;
+                        DrawCard(new Rectangle(sx, 168, 215, 268), shopInventory[i].Name, shopInventory[i].Description, shopInventory[i].Cost, Color.White, Color.DarkBlue);
+                        bool canAfford = profile.Gold >= cardShopCost;
+                        if (DrawButton(new Rectangle(sx, 448, 215, 38), $"BUY  {cardShopCost} G",
+                            canAfford ? new Color(35, 60, 45, 255) : new Color(42, 36, 36, 255),
+                            canAfford ? new Color(50, 95, 65, 255) : new Color(58, 42, 42, 255)) && canAfford)
                         {
-                            if (profile.Gold >= cardShopCost)
-                            {
-                                profile.Gold -= cardShopCost;
-                                profile.TotalCollection.Add(shopInventory[i]);
-                            }
+                            profile.Gold -= cardShopCost;
+                            profile.TotalCollection.Add(shopInventory[i]);
                         }
                     }
 
-                    // --- NEW 5-BRANCH SKILL TREE RENDERING ---
-                    int treeOriginX = width - 650;
-                    int treeOriginY = height / 2 + 50;
+                    // === RIGHT HALF: SKILL TREE ===
+                    int treeLeft = width / 2 + 20;
+                    float treeSpacing = Math.Min(80f, width * 0.044f);
+                    float treeOX = width * 0.765f;
+                    float treeOY = height * 0.56f;
 
-                    Raylib.DrawText("MAGE SKILL MATRIX (F3 for Debug)", treeOriginX - 100, 180, 22, Color.SkyBlue);
-                    Raylib.DrawRectangle(treeOriginX - 150, 220, 750, 450, new Color(15, 18, 22, 200));
+                    Raylib.DrawText("SKILL MATRIX", treeLeft + 20, 132, 18, Color.SkyBlue);
+                    Raylib.DrawLine(treeLeft + 20, 156, treeLeft + 195, 156, new Color(25, 85, 105, 110));
+                    Raylib.DrawText(profile.SkillTree.DebugMode ? "DEBUG  [F3]" : "[F3]",
+                        treeLeft + 210, 137, 13,
+                        profile.SkillTree.DebugMode ? new Color(200, 80, 80, 255) : new Color(52, 60, 72, 255));
 
-                    // 1. Draw connections lines first (so they sit underneath the nodes)
-                    foreach (var node in profile.SkillTree.Nodes)
+                    // Connectors drawn first (underneath nodes)
+                    foreach (var sn in profile.SkillTree.Nodes)
                     {
-                        Vector2 pos = GetSkillNodePos(node, treeOriginX, treeOriginY);
-                        foreach (var reqId in node.PrerequisiteIds)
+                        Vector2 snPos = GetSkillNodePos(sn, treeOX, treeOY, treeSpacing);
+                        foreach (var reqId in sn.PrerequisiteIds)
                         {
-                            var reqNode = profile.SkillTree.Nodes.Find(n => n.Id == reqId);
-                            if (reqNode != null)
-                            {
-                                Vector2 reqPos = GetSkillNodePos(reqNode, treeOriginX, treeOriginY);
-                                Color lineColor = node.IsUnlocked ? GetBranchColor(node.Branch) : new Color(50, 50, 50, 255);
-                                Raylib.DrawLineEx(reqPos, pos, 4f, lineColor);
-                            }
+                            var req = profile.SkillTree.Nodes.Find(n => n.Id == reqId);
+                            if (req == null) continue;
+                            Vector2 reqPos = GetSkillNodePos(req, treeOX, treeOY, treeSpacing);
+                            Color lc = profile.SkillTree.DebugMode
+                                ? (sn.IsUnlocked ? GetBranchColor(sn.Branch) : new Color(40, 42, 48, 255))
+                                : (sn.IsUnlocked ? new Color(0, 215, 235, 210) : new Color(32, 125, 145, 50));
+                            Raylib.DrawLineEx(reqPos, snPos, sn.IsUnlocked ? 3f : 2f, lc);
                         }
                     }
 
                     SkillNode? hoveredNode = null;
 
-                    // 2. Draw the nodes and process hovering
-                    foreach (var node in profile.SkillTree.Nodes)
+                    foreach (var sn in profile.SkillTree.Nodes)
                     {
-                        Vector2 pos = GetSkillNodePos(node, treeOriginX, treeOriginY);
-                        Color nodeColor = GetBranchColor(node.Branch);
-                        
-                        bool isHovered = Raylib.CheckCollisionPointCircle(mouse, pos, 20);
-                        if (isHovered) hoveredNode = node;
+                        Vector2 snPos = GetSkillNodePos(sn, treeOX, treeOY, treeSpacing);
+                        float nr = sn.Branch == SkillBranch.Origin ? 24f : 20f;
+                        bool avail = profile.SkillTree.IsAvailable(sn.Id);
 
-                        // Filled if unlocked, Hollow outline if locked
-                        if (node.IsUnlocked)
+                        if (Raylib.CheckCollisionPointCircle(mouse, snPos, nr + 8)) hoveredNode = sn;
+
+                        if (profile.SkillTree.DebugMode)
                         {
-                            Raylib.DrawCircleV(pos, 20, nodeColor);
-                            Raylib.DrawCircleLines((int)pos.X, (int)pos.Y, 20, Color.White);
+                            Color dc = GetBranchColor(sn.Branch);
+                            Raylib.DrawCircleV(snPos, nr, sn.IsUnlocked ? dc : new Color(15, 17, 23, 255));
+                            Raylib.DrawCircleLines((int)snPos.X, (int)snPos.Y, nr,
+                                sn.IsUnlocked ? Color.White : (avail ? dc : new Color(46, 48, 56, 255)));
+                            Raylib.DrawText($"{sn.Id}", (int)snPos.X - 5, (int)snPos.Y - 7, 13,
+                                sn.IsUnlocked ? Color.Black : Color.DarkGray);
+                            Raylib.DrawText(sn.Branch.ToString()[..1], (int)snPos.X - 10, (int)snPos.Y - 33, 13, dc);
                         }
                         else
                         {
-                            Raylib.DrawCircleV(pos, 20, new Color(20, 20, 20, 255));
-                            Raylib.DrawCircleLines((int)pos.X, (int)pos.Y, 20, profile.SkillTree.IsAvailable(node.Id) ? nodeColor : Color.DarkGray);
-                        }
+                            Color outline = sn.IsUnlocked ? new Color(0, 225, 245, 255)
+                                          : avail         ? new Color(0, 200, 220, 200)
+                                          :                 new Color(55, 148, 168, 105);
+                            Color fill = sn.IsUnlocked ? new Color(0, 165, 192, 255) : new Color(11, 15, 22, 255);
 
-                        // Debug Overlay Details
-                        if (profile.SkillTree.DebugMode)
-                        {
-                            Raylib.DrawText($"ID:{node.Id}", (int)pos.X - 12, (int)pos.Y - 8, 10, Color.Black);
-                            Raylib.DrawText(node.Branch.ToString(), (int)pos.X - 25, (int)pos.Y - 35, 10, nodeColor);
+                            if (avail && !sn.IsUnlocked)
+                                Raylib.DrawCircleV(snPos, nr + 7, new Color(0, 190, 210, 25));
+
+                            Raylib.DrawCircleV(snPos, nr, fill);
+                            Raylib.DrawCircleLines((int)snPos.X, (int)snPos.Y, nr, outline);
+                            Raylib.DrawCircleLines((int)snPos.X, (int)snPos.Y, nr - 1f,
+                                new Color(outline.R, outline.G, outline.B, (byte)(outline.A / 3)));
+
+                            DrawNodeIcon(snPos, sn.Branch, sn.IsUnlocked ? Color.White : outline, nr * 0.52f);
                         }
                     }
 
-                    // 3. Render Tooltip for Hovered Node + Handle Clicks (QOL Math applied)
+                    // Tooltip
                     if (hoveredNode != null)
                     {
-                        Vector2 hoverPos = GetSkillNodePos(hoveredNode, treeOriginX, treeOriginY);
-                        Rectangle tooltip = new Rectangle(hoverPos.X - 75, hoverPos.Y + 30, 150, 90);
-                        Raylib.DrawRectangleRounded(tooltip, 0.1f, 4, new Color(30, 35, 45, 240));
-                        Raylib.DrawRectangleRoundedLinesEx(tooltip, 0.1f, 4, 1, GetBranchColor(hoveredNode.Branch));
+                        Vector2 hnPos = GetSkillNodePos(hoveredNode, treeOX, treeOY, treeSpacing);
+                        int ttW = 198, ttH = 108;
+                        float ttX = hnPos.X + 30, ttY = hnPos.Y - ttH / 2f;
+                        if (ttX + ttW > width - 8) ttX = hnPos.X - ttW - 30;
+                        if (ttY < 65) ttY = 65;
+                        if (ttY + ttH > height - 8) ttY = height - ttH - 8;
 
-                        Raylib.DrawText(hoveredNode.Name, (int)tooltip.X + 10, (int)tooltip.Y + 10, 14, Color.White);
-                        Raylib.DrawText(hoveredNode.Description, (int)tooltip.X + 10, (int)tooltip.Y + 30, 12, Color.LightGray);
-                        
+                        Color ttBorder = profile.SkillTree.DebugMode
+                            ? GetBranchColor(hoveredNode.Branch)
+                            : new Color(0, 200, 220, 210);
+                        Raylib.DrawRectangleRounded(new Rectangle(ttX, ttY, ttW, ttH), 0.12f, 6, new Color(11, 14, 21, 248));
+                        Raylib.DrawRectangleRoundedLinesEx(new Rectangle(ttX, ttY, ttW, ttH), 0.12f, 6, 1.5f, ttBorder);
+
+                        Raylib.DrawText(hoveredNode.Name, (int)ttX + 10, (int)ttY + 10, 14, Color.White);
+                        Raylib.DrawText(hoveredNode.Description, (int)ttX + 10, (int)ttY + 30, 12, new Color(180, 185, 198, 255));
+
                         if (hoveredNode.IsUnlocked)
                         {
-                            Raylib.DrawText("UNLOCKED", (int)tooltip.X + 10, (int)tooltip.Y + 65, 14, Color.Green);
+                            Raylib.DrawText("UNLOCKED", (int)ttX + 10, (int)ttY + 80, 14, new Color(0, 210, 90, 255));
                         }
                         else
                         {
-                            int totalCost = profile.SkillTree.GetTotalCostToUnlock(hoveredNode.Id);
-                            Color costColor = profile.SkillPoints >= totalCost ? Color.Yellow : Color.Red;
-                            Raylib.DrawText($"Path Cost: {totalCost} SP", (int)tooltip.X + 10, (int)tooltip.Y + 65, 14, costColor);
+                            int pathCost = profile.SkillTree.GetTotalCostToUnlock(hoveredNode.Id);
+                            bool canUnlock = profile.SkillPoints >= pathCost;
+                            Raylib.DrawText($"Cost: {pathCost} SP", (int)ttX + 10, (int)ttY + 55, 13,
+                                canUnlock ? Color.Yellow : new Color(210, 72, 72, 255));
+                            Raylib.DrawText(canUnlock ? "Click to unlock path" : $"Need {pathCost - profile.SkillPoints} more SP",
+                                (int)ttX + 10, (int)ttY + 80, 12,
+                                canUnlock ? new Color(0, 190, 210, 200) : new Color(155, 70, 70, 200));
 
-                            if (Raylib.IsMouseButtonPressed(MouseButton.Left) && profile.SkillPoints >= totalCost)
+                            if (canUnlock && Raylib.IsMouseButtonPressed(MouseButton.Left))
                             {
                                 int sp = profile.SkillPoints;
                                 profile.SkillTree.UnlockPath(hoveredNode.Id, ref sp);
