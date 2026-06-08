@@ -25,6 +25,8 @@ namespace CardGamePrototype.Core
 
         public int ExecutionsThisTurn { get; set; }
 
+        public int EnemyTurnCount { get; set; }
+
         public TurnPhase Phase { get; set; } = TurnPhase.PlayerTurn;
 
         public int BoardSize { get; } = 5;

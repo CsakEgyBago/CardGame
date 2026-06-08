@@ -9,6 +9,8 @@ namespace CardGamePrototype.Core
             yield return Push();
             yield return FrostNova();
             yield return BioSpore();
+            yield return IronGuard();
+            yield return StormStrike();
         }
 
         public static CardDefinition Ignite()
@@ -20,7 +22,9 @@ namespace CardGamePrototype.Core
                 Description = "Applies 2 Fire to the enemy.",
                 Cost = 1,
                 CardType = CardType.Incantation,
-                ResolutionRole = CardResolutionRole.Catalyst
+                ResolutionRole = CardResolutionRole.Catalyst,
+                MinionHp = 8,
+                MinionAttack = 2
             };
             c.CatalystEffects.Add(new EffectDefinition
             {
@@ -41,7 +45,9 @@ namespace CardGamePrototype.Core
                 Description = "Deal 6 DMG. (12 if target\nhas Fire).",
                 Cost = 1,
                 CardType = CardType.Incantation,
-                ResolutionRole = CardResolutionRole.Executioner
+                ResolutionRole = CardResolutionRole.Executioner,
+                MinionHp = 6,
+                MinionAttack = 4
             };
             c.ExecutionerEffects.Add(new EffectDefinition
             {
@@ -72,7 +78,9 @@ namespace CardGamePrototype.Core
                 Description = "Push enemy back 1 space.\nDeals 4 DMG at edge.",
                 Cost = 1,
                 CardType = CardType.Strike,
-                ResolutionRole = CardResolutionRole.Both
+                ResolutionRole = CardResolutionRole.Both,
+                MinionHp = 14,
+                MinionAttack = 2
             };
             c.CatalystEffects.Add(new EffectDefinition
             {
@@ -101,7 +109,9 @@ namespace CardGamePrototype.Core
                 Description = "Apply 1 Frost. Deals 10 DMG\nif enemy has Frost.",
                 Cost = 2,
                 CardType = CardType.Incantation,
-                ResolutionRole = CardResolutionRole.Both
+                ResolutionRole = CardResolutionRole.Both,
+                MinionHp = 10,
+                MinionAttack = 1
             };
             c.CatalystEffects.Add(new EffectDefinition
             {
@@ -132,7 +142,9 @@ namespace CardGamePrototype.Core
                 Description = "Apply 1 Bio. Deals 8 DMG\nif enemy has Bio.",
                 Cost = 1,
                 CardType = CardType.Construct,
-                ResolutionRole = CardResolutionRole.Both
+                ResolutionRole = CardResolutionRole.Both,
+                MinionHp = 12,
+                MinionAttack = 2
             };
 
             c.CatalystEffects.Add(new EffectDefinition
@@ -153,6 +165,50 @@ namespace CardGamePrototype.Core
                 ConsumeStacks = 1
             });
 
+            return c;
+        }
+
+        public static CardDefinition IronGuard()
+        {
+            return new CardDefinition
+            {
+                Id = "iron_guard",
+                Name = "Iron Guard",
+                Description = "Stalwart defender. Endures hits so you don't have to.",
+                Cost = 2,
+                CardType = CardType.Construct,
+                ResolutionRole = CardResolutionRole.Catalyst,
+                MinionHp = 20,
+                MinionAttack = 1
+            };
+        }
+
+        public static CardDefinition StormStrike()
+        {
+            var c = new CardDefinition
+            {
+                Id = "storm_strike",
+                Name = "Storm Strike",
+                Description = "Fragile but hits hard. Applies 2 Fire.",
+                Cost = 1,
+                CardType = CardType.Strike,
+                ResolutionRole = CardResolutionRole.Both,
+                MinionHp = 6,
+                MinionAttack = 5
+            };
+            c.CatalystEffects.Add(new EffectDefinition
+            {
+                Type = EffectType.ApplyElement,
+                Element = ElementType.Fire,
+                Value = 2,
+                Target = TargetType.Enemy
+            });
+            c.ExecutionerEffects.Add(new EffectDefinition
+            {
+                Type = EffectType.Damage,
+                Value = 8,
+                Target = TargetType.Enemy
+            });
             return c;
         }
     }
