@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "as3/aWUseNw=",
+  "dgSpecHash": "ageq2Nl9LNw=",
   "success": true,
-  "projectFilePath": "D:\\mcm\\CardGame\\CardGameTest\\CardGamePrototype.Tests\\CardGamePrototype.Tests.csproj",
+  "projectFilePath": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Tests\\CardGamePrototype.Tests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Gamer\\.nuget\\packages\\microsoft.codecoverage\\17.14.1\\microsoft.codecoverage.17.14.1.nupkg.sha512",
     "C:\\Users\\Gamer\\.nuget\\packages\\microsoft.net.test.sdk\\17.14.1\\microsoft.net.test.sdk.17.14.1.nupkg.sha512",
