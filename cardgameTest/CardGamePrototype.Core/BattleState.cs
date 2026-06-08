@@ -36,7 +36,7 @@ namespace CardGamePrototype.Core
             Seed = seed;
             Rng = new Random(seed);
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
                 PlayerBoard.Add(new BoardSlot(i));
             }

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="CardGamePrototype.Client/CardGamePrototype.Client.csproj" />
+  <Project Path="CardGamePrototype.Core/CardGamePrototype.Core.csproj" />
+  <Project Path="CardGamePrototype.Tests/CardGamePrototype.Tests.csproj" />
+</Solution>

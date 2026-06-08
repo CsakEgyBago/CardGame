@@ -12,10 +12,11 @@ namespace CardGamePrototype.Client
             service.NewBattle();
 
             Raylib.InitWindow(1600, 900, "Catalyst Prototype");
-
             Raylib.SetWindowState(ConfigFlags.ResizableWindow);
-
             Raylib.SetTargetFPS(60);
+
+            int draggingCardIndex = -1;
+            bool dragging = false;
 
             while (!Raylib.WindowShouldClose())
             {
@@ -31,9 +32,7 @@ namespace CardGamePrototype.Client
                 {
                     if (state.SelectedBoardSlot >= 0)
                     {
-                        service.ExecuteCard(
-                            state.SelectedBoardSlot);
-
+                        service.ExecuteCard(state.SelectedBoardSlot);
                         state.SelectedBoardSlot = -1;
                     }
                 }
@@ -41,54 +40,50 @@ namespace CardGamePrototype.Client
                 int width = Raylib.GetScreenWidth();
                 int height = Raylib.GetScreenHeight();
 
-                float boardY = height * 0.40f;
-                float handY = height * 0.72f;
+                float boardY = height * 0.42f;
+                float handY = height * 0.75f;
 
-                const int slotWidth = 220;
-                const int slotHeight = 140;
+                const int slotWidth = 180;
+                const int slotHeight = 130;
 
-                const int cardWidth = 180;
-                const int cardHeight = 120;
+                const int cardWidth = 170;
+                const int cardHeight = 110;
 
                 Vector2 mouse = Raylib.GetMousePosition();
 
+                int boardStart =
+                    width / 2 -
+                    ((slotWidth * 5) + (20 * 4)) / 2;
+
+                // START DRAG
+
                 if (Raylib.IsMouseButtonPressed(MouseButton.Left))
                 {
-                    bool handled = false;
-
-                    // HAND SELECTION
-
                     for (int i = 0; i < state.Hand.Count; i++)
                     {
-                        int x = 40 + i * (cardWidth + 20);
+                        int x = 40 + i * (cardWidth + 15);
 
-                        Rectangle rect =
+                        Rectangle cardRect =
                             new Rectangle(
                                 x,
                                 handY,
                                 cardWidth,
                                 cardHeight);
 
-                        if (Raylib.CheckCollisionPointRec(mouse, rect))
+                        if (Raylib.CheckCollisionPointRec(mouse, cardRect))
                         {
-                            state.SelectedHandCard = i;
-                            handled = true;
+                            dragging = true;
+                            draggingCardIndex = i;
                             break;
                         }
                     }
 
-                    // BOARD SLOT INTERACTION
-
-                    if (!handled)
+                    if (!dragging)
                     {
-                        int startX =
-                            width / 2 -
-                            ((slotWidth * 3) + 40) / 2;
-
-                        for (int i = 0; i < 3; i++)
+                        for (int i = 0; i < state.PlayerBoard.Count; i++)
                         {
                             int x =
-                                startX +
+                                boardStart +
                                 i * (slotWidth + 20);
 
                             Rectangle slotRect =
@@ -98,53 +93,57 @@ namespace CardGamePrototype.Client
                                     slotWidth,
                                     slotHeight);
 
-                            if (!Raylib.CheckCollisionPointRec(
-                                mouse,
-                                slotRect))
+                            if (!Raylib.CheckCollisionPointRec(mouse, slotRect))
                                 continue;
-
-                            // place card
-
-                            if (state.SelectedHandCard >= 0)
-                            {
-                                bool placed =
-                                    service.PlaceCard(
-                                        state.SelectedHandCard,
-                                        i);
-
-                                if (placed)
-                                {
-                                    state.SelectedHandCard = -1;
-                                }
-
-                                handled = true;
-                                break;
-                            }
-
-                            // select board card
 
                             if (state.PlayerBoard[i].IsOccupied)
                             {
                                 state.SelectedBoardSlot = i;
                             }
-                            else
-                            {
-                                state.SelectedBoardSlot = -1;
-                            }
-
-                            handled = true;
-                            break;
                         }
                     }
+                }
+
+                // DROP
+
+                if (dragging &&
+                    Raylib.IsMouseButtonReleased(MouseButton.Left))
+                {
+                    bool placed = false;
+
+                    for (int i = 0; i < state.PlayerBoard.Count; i++)
+                    {
+                        int x =
+                            boardStart +
+                            i * (slotWidth + 20);
+
+                        Rectangle slotRect =
+                            new Rectangle(
+                                x,
+                                boardY,
+                                slotWidth,
+                                slotHeight);
+
+                        if (!Raylib.CheckCollisionPointRec(mouse, slotRect))
+                            continue;
+
+                        placed =
+                            service.PlaceCard(
+                                draggingCardIndex,
+                                i);
+
+                        break;
+                    }
+
+                    dragging = false;
+                    draggingCardIndex = -1;
                 }
 
                 Raylib.BeginDrawing();
 
                 Raylib.ClearBackground(Color.DarkGray);
 
-                // =====================
-                // PLAYER INFO
-                // =====================
+                // PLAYER
 
                 Raylib.DrawText(
                     $"Player HP: {state.Player.Hp}/{state.Player.MaxHp}",
@@ -160,9 +159,14 @@ namespace CardGamePrototype.Client
                     24,
                     Color.Gold);
 
-                // =====================
-                // ENEMY INFO
-                // =====================
+                Raylib.DrawText(
+                    $"Burned: {state.BurnPile.Count}",
+                    20,
+                    90,
+                    24,
+                    Color.Orange);
+
+                // ENEMY
 
                 Raylib.DrawText(
                     $"Enemy HP: {state.Enemy.Hp}/{state.Enemy.MaxHp}",
@@ -172,45 +176,40 @@ namespace CardGamePrototype.Client
                     Color.White);
 
                 Raylib.DrawText(
-                    $"Position: {state.Enemy.Position}",
+                    $"Pos: {state.Enemy.Position}",
                     width - 350,
                     55,
-                    24,
+                    22,
                     Color.White);
 
                 Raylib.DrawText(
-                    $"Fire: {state.Enemy.ActiveElements.GetStacks(ElementType.Fire)}",
+                    $"Fire {state.Enemy.ActiveElements.GetStacks(ElementType.Fire)}",
                     width - 350,
                     90,
                     22,
                     Color.Orange);
 
                 Raylib.DrawText(
-                    $"Frost: {state.Enemy.ActiveElements.GetStacks(ElementType.Frost)}",
+                    $"Frost {state.Enemy.ActiveElements.GetStacks(ElementType.Frost)}",
                     width - 350,
                     120,
                     22,
                     Color.SkyBlue);
 
                 Raylib.DrawText(
-                    $"Bio: {state.Enemy.ActiveElements.GetStacks(ElementType.Bio)}",
+                    $"Bio {state.Enemy.ActiveElements.GetStacks(ElementType.Bio)}",
                     width - 350,
                     150,
                     22,
                     Color.Lime);
 
-                // =====================
-                // ENEMY LANE
-                // =====================
+                // ENEMY LANES
 
-                int laneStart =
-                    width / 2 - 300;
+                int laneStart = width / 2 - 300;
 
                 for (int i = 0; i < 5; i++)
                 {
-                    int x =
-                        laneStart +
-                        i * 120;
+                    int x = laneStart + i * 120;
 
                     Raylib.DrawRectangleLines(
                         x,
@@ -221,10 +220,10 @@ namespace CardGamePrototype.Client
 
                     Raylib.DrawText(
                         i.ToString(),
-                        x + 8,
-                        188,
+                        x + 10,
+                        190,
                         20,
-                        Color.LightGray);
+                        Color.White);
                 }
 
                 int enemyX =
@@ -239,68 +238,67 @@ namespace CardGamePrototype.Client
                     40,
                     Color.Red);
 
-                // =====================
                 // BOARD
-                // =====================
 
                 Raylib.DrawText(
-                    "BOARD",
-                    width / 2 - 60,
+                    "CATALYST BOARD",
+                    boardStart,
                     (int)boardY - 40,
                     24,
                     Color.White);
 
-                int boardStart =
-                    width / 2 -
-                    ((slotWidth * 3) + 40) / 2;
-
-                for (int i = 0; i < 3; i++)
+                for (int i = 0; i < state.PlayerBoard.Count; i++)
                 {
                     int x =
                         boardStart +
                         i * (slotWidth + 20);
 
-                    Color outline =
-                        state.SelectedBoardSlot == i
-                            ? Color.Green
-                            : Color.LightGray;
-
-                    Raylib.DrawRectangleLinesEx(
+                    Rectangle slotRect =
                         new Rectangle(
                             x,
                             boardY,
                             slotWidth,
-                            slotHeight),
-                        3,
-                        outline);
+                            slotHeight);
+
+                    bool hover =
+                        Raylib.CheckCollisionPointRec(
+                            mouse,
+                            slotRect);
+
+                    Color border =
+                        state.SelectedBoardSlot == i
+                            ? Color.Green
+                            : hover
+                                ? Color.Yellow
+                                : Color.LightGray;
+
+                    Raylib.DrawRectangleLinesEx(
+                        slotRect,
+                        4,
+                        border);
 
                     var slot =
                         state.PlayerBoard[i];
 
                     if (slot.IsOccupied)
                     {
-                        var card =
-                            slot.Card!;
-
                         Raylib.DrawText(
-                            card.Name,
+                            slot.Card!.Name,
                             x + 10,
                             (int)boardY + 10,
-                            22,
+                            20,
                             Color.White);
 
                         Raylib.DrawText(
-                            $"Age: {slot.TurnsOnBoard}",
+                            $"Turns {slot.TurnsOnBoard}",
                             x + 10,
-                            (int)boardY + 45,
-                            18,
+                            (int)boardY + 40,
+                            16,
                             Color.LightGray);
                     }
                 }
 
-                // =====================
                 // HAND
-                // =====================
 
                 Raylib.DrawText(
                     "HAND",
@@ -311,14 +309,12 @@ namespace CardGamePrototype.Client
 
                 for (int i = 0; i < state.Hand.Count; i++)
                 {
+                    if (dragging && i == draggingCardIndex)
+                        continue;
+
                     int x =
                         40 +
-                        i * (cardWidth + 20);
-
-                    Color border =
-                        state.SelectedHandCard == i
-                            ? Color.Gold
-                            : Color.Black;
+                        i * (cardWidth + 15);
 
                     Raylib.DrawRectangle(
                         x,
@@ -327,17 +323,14 @@ namespace CardGamePrototype.Client
                         cardHeight,
                         Color.RayWhite);
 
-                    Raylib.DrawRectangleLinesEx(
-                        new Rectangle(
-                            x,
-                            handY,
-                            cardWidth,
-                            cardHeight),
-                        4,
-                        border);
+                    Raylib.DrawRectangleLines(
+                        x,
+                        (int)handY,
+                        cardWidth,
+                        cardHeight,
+                        Color.Black);
 
-                    var card =
-                        state.Hand[i];
+                    var card = state.Hand[i];
 
                     Raylib.DrawText(
                         card.Name,
@@ -352,43 +345,45 @@ namespace CardGamePrototype.Client
                         (int)handY + 40,
                         18,
                         Color.DarkGray);
-
-                    Raylib.DrawText(
-                        card.CardType.ToString(),
-                        x + 10,
-                        (int)handY + 70,
-                        18,
-                        Color.DarkGray);
                 }
 
-                // =====================
-                // BURN PILE
-                // =====================
+                // DRAGGING GHOST CARD
 
-                Raylib.DrawText(
-                    $"Burned: {state.BurnPile.Count}",
-                    20,
-                    height - 40,
-                    22,
-                    Color.Orange);
-
-                // =====================
-                // STATUS
-                // =====================
-
-                if (state.Phase == TurnPhase.Finished)
+                if (dragging &&
+                    draggingCardIndex >= 0 &&
+                    draggingCardIndex < state.Hand.Count)
                 {
-                    string msg =
-                        state.Player.IsDead
-                            ? "Defeat"
-                            : "Victory";
+                    var card =
+                        state.Hand[draggingCardIndex];
+
+                    int ghostX =
+                        (int)mouse.X - cardWidth / 2;
+
+                    int ghostY =
+                        (int)mouse.Y - cardHeight / 2;
+
+                    Raylib.DrawRectangle(
+                        ghostX,
+                        ghostY,
+                        cardWidth,
+                        cardHeight,
+                        Color.Beige);
+
+                    Raylib.DrawRectangleLinesEx(
+                        new Rectangle(
+                            ghostX,
+                            ghostY,
+                            cardWidth,
+                            cardHeight),
+                        4,
+                        Color.Gold);
 
                     Raylib.DrawText(
-                        msg,
-                        width / 2 - 80,
-                        40,
-                        40,
-                        Color.Yellow);
+                        card.Name,
+                        ghostX + 10,
+                        ghostY + 10,
+                        20,
+                        Color.Black);
                 }
 
                 Raylib.EndDrawing();
