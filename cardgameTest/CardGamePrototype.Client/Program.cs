@@ -38,37 +38,38 @@ class Program
     {
         Vector2 mouse = Raylib.GetMousePosition();
         bool hovered = Raylib.CheckCollisionPointRec(mouse, rect);
-        Raylib.DrawRectangleRounded(rect, 0.15f, 4, hovered ? hoverColor : baseColor);
-        Raylib.DrawRectangleRoundedLinesEx(rect, 0.15f, 4, 2, Color.DarkGray);
-        
-        int textWidth = Raylib.MeasureText(text, 20);
-        Raylib.DrawText(text, (int)(rect.X + rect.Width / 2 - textWidth / 2), (int)(rect.Y + rect.Height / 2 - 10), 20, Color.White);
-        
+        Raylib.DrawRectangleRounded(rect, 0.14f, 6, hovered ? hoverColor : baseColor);
+        // Top-edge highlight gives slight 3-D lift
+        Raylib.DrawLineEx(new Vector2(rect.X + 6, rect.Y + 1.5f), new Vector2(rect.X + rect.Width - 6, rect.Y + 1.5f), 1f, new Color(255, 255, 255, 38));
+        Raylib.DrawRectangleRoundedLinesEx(rect, 0.14f, 6, 1.5f, hovered ? new Color(185, 190, 210, 160) : new Color(70, 75, 95, 130));
+
+        int textWidth = Raylib.MeasureText(text, 16);
+        Raylib.DrawText(text, (int)(rect.X + rect.Width / 2 - textWidth / 2), (int)(rect.Y + rect.Height / 2 - 8), 16, new Color(225, 228, 238, 255));
+
         return hovered && Raylib.IsMouseButtonPressed(MouseButton.Left);
     }
 
     static void DrawCard(Rectangle rect, string title, string description, int cost, Color body, Color border, bool selected = false)
     {
         Raylib.DrawRectangleRounded(rect, 0.08f, 8, body);
-        Raylib.DrawRectangleRoundedLinesEx(rect, 0.08f, 8, selected ? 5 : 2, selected ? Color.Gold : border);
+        Raylib.DrawRectangleRoundedLinesEx(rect, 0.08f, 8, selected ? 3f : 1.5f, selected ? Color.Gold : border);
+        if (selected)
+            Raylib.DrawRectangleRoundedLinesEx(new Rectangle(rect.X - 3, rect.Y - 3, rect.Width + 6, rect.Height + 6), 0.1f, 8, 1f, new Color(255, 210, 0, 80));
 
-        Raylib.DrawRectangle((int)rect.X, (int)rect.Y, (int)rect.Width, 34, new Color(25, 35, 55, 255));
-        Raylib.DrawText(title, (int)rect.X + 8, (int)rect.Y + 8, 15, Color.White);
-        Raylib.DrawText(description, (int)rect.X + 8, (int)rect.Y + 45, 12, Color.DarkGray);
+        // Header overlay — semi-transparent so it works on any body color
+        Raylib.DrawRectangle((int)rect.X + 1, (int)rect.Y + 1, (int)rect.Width - 2, 29, new Color(0, 0, 0, 140));
+        Raylib.DrawText(title, (int)rect.X + 8, (int)rect.Y + 8, 13, Color.White);
+        Raylib.DrawLineEx(new Vector2(rect.X + 6, rect.Y + 30f), new Vector2(rect.X + rect.Width - 26, rect.Y + 30f), 1f, new Color(255, 255, 255, 22));
 
-        Vector2 badgeCenter = new Vector2(rect.X + rect.Width - 20, rect.Y + 17);
-        Raylib.DrawCircleV(badgeCenter, 13, new Color(0, 90, 190, 255));
-        
-        Raylib.DrawTriangle(
-            new Vector2(badgeCenter.X + 1, badgeCenter.Y - 7),
-            new Vector2(badgeCenter.X - 4, badgeCenter.Y + 1),
-            new Vector2(badgeCenter.X + 3, badgeCenter.Y + 1), Color.Yellow);
-        Raylib.DrawTriangle(
-            new Vector2(badgeCenter.X - 3, badgeCenter.Y - 1),
-            new Vector2(badgeCenter.X - 1, badgeCenter.Y + 7),
-            new Vector2(badgeCenter.X + 4, badgeCenter.Y - 1), Color.Yellow);
+        // Description
+        Raylib.DrawText(description, (int)rect.X + 8, (int)rect.Y + 36, 11, new Color(155, 162, 180, 255));
 
-        Raylib.DrawText(cost.ToString(), (int)(badgeCenter.X - 14), (int)(badgeCenter.Y - 6), 12, Color.White);
+        // Cost badge — number centered, no icon clutter
+        Vector2 badge = new(rect.X + rect.Width - 15, rect.Y + 15);
+        Raylib.DrawCircleV(badge, 12, new Color(0, 72, 162, 255));
+        Raylib.DrawCircleLines((int)badge.X, (int)badge.Y, 12, new Color(68, 132, 238, 200));
+        int costW = Raylib.MeasureText(cost.ToString(), 13);
+        Raylib.DrawText(cost.ToString(), (int)(badge.X - costW / 2), (int)(badge.Y - 7), 13, Color.White);
     }
 
     static Color CardColorFromName(string name) => name switch
@@ -177,6 +178,19 @@ class Program
         }
     }
 
+    static void DrawBackground(int width, int height)
+    {
+        for (int x = 20; x < width; x += 36)
+            for (int y = 20; y < height; y += 36)
+                Raylib.DrawCircleV(new Vector2(x, y), 0.9f, new Color(38, 42, 54, 255));
+    }
+
+    static void DrawBar(float x, float y, float w, float h, float frac, Color fill, Color bg)
+    {
+        Raylib.DrawRectangleRec(new Rectangle(x, y, w, h), bg);
+        Raylib.DrawRectangleRec(new Rectangle(x, y, w * Math.Clamp(frac, 0f, 1f), h), fill);
+    }
+
     static Color GetBranchColor(SkillBranch branch)
     {
         return branch switch
@@ -239,43 +253,71 @@ class Program
             }
 
             Raylib.BeginDrawing();
-            Raylib.ClearBackground(new Color(25, 27, 33, 255));
+            Raylib.ClearBackground(new Color(11, 13, 18, 255));
+            DrawBackground(width, height);
 
             switch (scene)
             {
                 case GameScene.TitleScreen:
-                    Raylib.DrawText("CATALYST // ARCHITECTURE", width / 2 - 380, height / 2 - 140, 50, Color.Gold);
-                    Raylib.DrawText("Deterministic Tactical Command Interface", width / 2 - 240, height / 2 - 70, 20, Color.LightGray);
-                    
-                    if (DrawButton(new Rectangle(width / 2 - 150, height / 2 + 20, 300, 50), "INITIALIZE CORE SYSTEM", new Color(40, 50, 70, 255), new Color(60, 80, 120, 255)))
+                    // Title block
+                    Raylib.DrawRectangle(width / 2 - 370, height / 2 - 190, 740, 230, new Color(16, 20, 30, 200));
+                    Raylib.DrawLineEx(new Vector2(width / 2 - 340f, height / 2 - 108f), new Vector2(width / 2 + 340f, height / 2 - 108f), 1f, new Color(100, 85, 30, 180));
+
+                    int t1w = Raylib.MeasureText("CATALYST", 76);
+                    Raylib.DrawText("CATALYST", width / 2 - t1w / 2, height / 2 - 188, 76, Color.Gold);
+                    int t2w = Raylib.MeasureText("//  ARCHITECTURE", 34);
+                    Raylib.DrawText("//  ARCHITECTURE", width / 2 - t2w / 2, height / 2 - 108, 34, new Color(198, 168, 60, 255));
+                    Raylib.DrawLineEx(new Vector2(width / 2 - 340f, height / 2 - 66f), new Vector2(width / 2 + 340f, height / 2 - 66f), 1f, new Color(100, 85, 30, 180));
+
+                    int subW = Raylib.MeasureText("Deterministic Tactical Command Interface", 15);
+                    Raylib.DrawText("Deterministic Tactical Command Interface", width / 2 - subW / 2, height / 2 - 46, 15, new Color(130, 136, 158, 255));
+
+                    if (DrawButton(new Rectangle(width / 2 - 145, height / 2 + 22, 290, 48), "INITIALIZE CORE SYSTEM", new Color(38, 50, 72, 255), new Color(58, 80, 122, 255)))
                         scene = GameScene.ModeSelect;
+
+                    int vw = Raylib.MeasureText("ALPHA  v0.1", 12);
+                    Raylib.DrawText("ALPHA  v0.1", width - vw - 14, height - 22, 12, new Color(55, 60, 78, 255));
                     break;
 
                 case GameScene.ModeSelect:
-                    Raylib.DrawText("SELECT SYSTEM PROTOCOL", width / 2 - 220, 150, 32, Color.White);
+                    int msHdr = Raylib.MeasureText("SELECT SYSTEM PROTOCOL", 30);
+                    Raylib.DrawText("SELECT SYSTEM PROTOCOL", width / 2 - msHdr / 2, 140, 30, Color.White);
+                    Raylib.DrawLineEx(new Vector2(width / 2 - 220f, 178f), new Vector2(width / 2 + 220f, 178f), 1f, new Color(62, 65, 82, 255));
 
-                    if (DrawButton(new Rectangle(width / 2 - 320, height / 2 - 40, 280, 120), "STORY MODE\n\n(Sector Campaign)", new Color(30, 80, 50, 255), new Color(45, 115, 75, 255)))
-                        scene = GameScene.CampaignMap;
-                    
-                    Rectangle arcadeFrame = new Rectangle(width / 2 + 40, height / 2 - 40, 280, 120);
-                    Raylib.DrawRectangleRec(arcadeFrame, new Color(40, 40, 45, 255));
-                    Raylib.DrawRectangleLinesEx(arcadeFrame, 2, Color.DarkGray);
-                    Raylib.DrawText("ARCADE MODE", (int)arcadeFrame.X + 60, (int)arcadeFrame.Y + 35, 22, Color.Gray);
-                    Raylib.DrawText("[LOCKED IN ALPHA]", (int)arcadeFrame.X + 50, (int)arcadeFrame.Y + 70, 16, Color.Maroon);
+                    // Story mode — clickable
+                    Rectangle storyR = new(width / 2 - 320, height / 2 - 70, 280, 130);
+                    bool storyHov = Raylib.CheckCollisionPointRec(mouse, storyR);
+                    Raylib.DrawRectangleRounded(storyR, 0.1f, 6, storyHov ? new Color(45, 115, 75, 255) : new Color(28, 75, 48, 255));
+                    Raylib.DrawLineEx(new Vector2(storyR.X + 6, storyR.Y + 1.5f), new Vector2(storyR.X + storyR.Width - 6, storyR.Y + 1.5f), 1f, new Color(255, 255, 255, 38));
+                    Raylib.DrawRectangleRoundedLinesEx(storyR, 0.1f, 6, 1.5f, new Color(58, 168, 95, 160));
+                    Raylib.DrawText("STORY MODE", (int)storyR.X + 48, (int)storyR.Y + 30, 22, Color.White);
+                    Raylib.DrawText("Sector Campaign", (int)storyR.X + 60, (int)storyR.Y + 60, 14, new Color(135, 210, 155, 255));
+                    Raylib.DrawText("Full roguelike run", (int)storyR.X + 60, (int)storyR.Y + 80, 12, new Color(85, 148, 100, 255));
+                    if (storyHov && Raylib.IsMouseButtonPressed(MouseButton.Left)) scene = GameScene.CampaignMap;
+
+                    // Arcade mode — locked
+                    Rectangle arcR = new(width / 2 + 40, height / 2 - 70, 280, 130);
+                    Raylib.DrawRectangleRounded(arcR, 0.1f, 6, new Color(24, 24, 30, 255));
+                    Raylib.DrawRectangleRoundedLinesEx(arcR, 0.1f, 6, 1.5f, new Color(46, 48, 60, 255));
+                    Raylib.DrawText("ARCADE MODE", (int)arcR.X + 48, (int)arcR.Y + 30, 22, new Color(72, 74, 90, 255));
+                    Raylib.DrawText("Coming soon", (int)arcR.X + 78, (int)arcR.Y + 60, 14, new Color(85, 48, 48, 255));
+                    Raylib.DrawText("LOCKED IN ALPHA", (int)arcR.X + 54, (int)arcR.Y + 80, 12, new Color(110, 50, 50, 255));
                     break;
 
                 case GameScene.CampaignMap:
-                    Raylib.DrawRectangle(0, 0, width, 60, new Color(18, 20, 24, 255));
-                    Raylib.DrawText($"STORY CAMPAIGN PROGRESSION OVERWORLD", 30, 18, 20, Color.White);
-                    Raylib.DrawText($"Credits Pool: {profile.Gold}G", width - 420, 20, 18, Color.Gold);
-                    Raylib.DrawText($"Skill Points: {profile.SkillPoints}SP", width - 200, 20, 18, Color.SkyBlue);
+                    Raylib.DrawRectangle(0, 0, width, 58, new Color(14, 16, 21, 255));
+                    Raylib.DrawLine(0, 58, width, 58, new Color(35, 40, 52, 255));
+                    Raylib.DrawText("CAMPAIGN", 28, 16, 22, Color.White);
+                    Raylib.DrawText($"{profile.Gold} G", width - 215, 16, 20, Color.Gold);
+                    Raylib.DrawText($"{profile.SkillPoints} SP", width - 100, 16, 20, Color.SkyBlue);
 
-                    if (DrawButton(new Rectangle(40, 100, 180, 45), "DECK MANAGER", new Color(65, 75, 95, 255), new Color(85, 105, 135, 255)))
+                    if (DrawButton(new Rectangle(40, 74, 160, 38), "DECK BUILDER", new Color(58, 70, 92, 255), new Color(78, 98, 130, 255)))
                         scene = GameScene.DeckBuilder;
-                    if (DrawButton(new Rectangle(240, 100, 180, 45), "MARKET / SKILLS", new Color(90, 70, 50, 255), new Color(130, 100, 70, 255)))
+                    if (DrawButton(new Rectangle(212, 74, 165, 38), "MARKET  /  SKILLS", new Color(82, 62, 42, 255), new Color(120, 92, 62, 255)))
                         scene = GameScene.MarketShop;
 
-                    Raylib.DrawText("SECTOR RUN TRAILMAP", width / 2 - 130, 220, 24, Color.LightGray);
+                    int cmHdr = Raylib.MeasureText("SECTOR MAP", 20);
+                    Raylib.DrawText("SECTOR MAP", width / 2 - cmHdr / 2, 215, 20, new Color(115, 120, 142, 255));
 
                     for (int i = 0; i < campaignNodes.Count; i++)
                     {
@@ -286,14 +328,58 @@ class Program
                         if (i < campaignNodes.Count - 1)
                         {
                             int nextX = 200 + (i + 1) * (width - 400) / (campaignNodes.Count - 1);
-                            Raylib.DrawLineEx(new Vector2(nodeX, nodeY), new Vector2(nextX, nodeY), 4, Color.DarkGray);
+                            Color lineC = campaignNodes[i].Completed ? new Color(45, 130, 65, 220) : new Color(40, 44, 56, 255);
+                            Raylib.DrawLineEx(new Vector2(nodeX, nodeY), new Vector2(nextX, nodeY), 3f, lineC);
                         }
 
-                        Rectangle nodeBox = new Rectangle(nodeX - 80, nodeY - 50, 160, 100);
-                        Color statusColor = node.Completed ? Color.DarkGreen : (i == activeNodeIndex ? Color.Maroon : Color.DarkGray);
-                        Color hoverStatusColor = i == activeNodeIndex ? Color.Red : statusColor;
+                        Color nodeBase = node.Completed   ? new Color(28, 80, 42, 255)
+                                       : i == activeNodeIndex ? (node.Type == NodeType.CombatBoss ? new Color(95, 28, 28, 255) : new Color(85, 42, 18, 255))
+                                       : new Color(24, 26, 34, 255);
+                        Color nodeHov  = node.Completed   ? new Color(38, 105, 55, 255)
+                                       : i == activeNodeIndex ? (node.Type == NodeType.CombatBoss ? new Color(135, 38, 38, 255) : new Color(120, 60, 22, 255))
+                                       : new Color(34, 36, 46, 255);
+                        Color nodeBorder = node.Completed ? new Color(55, 185, 80, 200)
+                                         : i == activeNodeIndex ? (node.Type == NodeType.CombatBoss ? new Color(210, 55, 55, 200) : new Color(218, 130, 40, 200))
+                                         : new Color(48, 52, 66, 200);
 
-                        if (DrawButton(nodeBox, $"{node.Name}\n\n[Tier {i + 1}]", statusColor, hoverStatusColor) && i == activeNodeIndex)
+                        Rectangle nodeBox = new(nodeX - 85, nodeY - 55, 170, 110);
+                        bool nodeHovered = Raylib.CheckCollisionPointRec(mouse, nodeBox) && i == activeNodeIndex;
+                        Raylib.DrawRectangleRounded(nodeBox, 0.1f, 6, nodeHovered ? nodeHov : nodeBase);
+                        Raylib.DrawLineEx(new Vector2(nodeBox.X + 6, nodeBox.Y + 1.5f), new Vector2(nodeBox.X + nodeBox.Width - 6, nodeBox.Y + 1.5f), 1f, new Color(255, 255, 255, 30));
+                        Raylib.DrawRectangleRoundedLinesEx(nodeBox, 0.1f, 6, 1.5f, nodeBorder);
+
+                        // Type label
+                        string typeTag = node.Type switch { NodeType.CombatElite => "ELITE", NodeType.CombatBoss => "BOSS", _ => "SECTOR" };
+                        Color typeCol  = node.Type switch { NodeType.CombatElite => new Color(215, 168, 38, 255), NodeType.CombatBoss => new Color(210, 55, 55, 255), _ => new Color(120, 175, 125, 255) };
+                        int ttw = Raylib.MeasureText(typeTag, 11);
+                        Raylib.DrawText(typeTag, nodeX - ttw / 2, nodeY - 48, 11, typeCol);
+
+                        // Node name
+                        int nnw = Raylib.MeasureText(node.Name, 12);
+                        // Truncate long names so they fit
+                        string displayName = nnw > 152 ? node.Name[..14] + "…" : node.Name;
+                        int dnw = Raylib.MeasureText(displayName, 12);
+                        Raylib.DrawText(displayName, nodeX - dnw / 2, nodeY - 22, 12, node.Completed ? new Color(145, 210, 155, 255) : Color.White);
+
+                        // HP info
+                        string hpStr = $"HP  {node.EnemyHp}";
+                        int hpw = Raylib.MeasureText(hpStr, 11);
+                        Raylib.DrawText(hpStr, nodeX - hpw / 2, nodeY, 11, new Color(190, 100, 100, 255));
+
+                        // Tier label / completed check
+                        if (node.Completed)
+                        {
+                            int ckw = Raylib.MeasureText("CLEARED", 11);
+                            Raylib.DrawText("CLEARED", nodeX - ckw / 2, nodeY + 20, 11, new Color(75, 200, 95, 255));
+                        }
+                        else
+                        {
+                            string tierStr = $"Tier {i + 1}";
+                            int tw = Raylib.MeasureText(tierStr, 11);
+                            Raylib.DrawText(tierStr, nodeX - tw / 2, nodeY + 20, 11, new Color(95, 100, 120, 255));
+                        }
+
+                        if (nodeHovered && Raylib.IsMouseButtonPressed(MouseButton.Left) && i == activeNodeIndex)
                         {
                             activeBattleNode = node;
                             battleService.NewBattle();
@@ -366,17 +452,19 @@ class Program
                     // === LEFT SIDEBAR: Player Hand ===
                     Raylib.DrawRectangle(0, 0, sideW, height, new Color(18, 20, 25, 255));
                     Raylib.DrawLine(sideW, 0, sideW, height, new Color(50, 55, 65, 255));
-                    Raylib.DrawText("Bf preview for p", 10, 8, 13, Color.Gold);
-                    Raylib.DrawText($"HP  {activeBattleState.Player.Hp}/{activeBattleState.Player.MaxHp}", 10, 28, 14, Color.White);
-                    Raylib.DrawText($"NRG {activeBattleState.Player.Energy}", 10, 46, 14, Color.SkyBlue);
-                    Raylib.DrawText($"DIS {activeBattleState.BurnPile.Count}", 10, 62, 13, Color.Orange);
+                    Raylib.DrawText("PLAYER", 10, 8, 12, new Color(100, 105, 128, 255));
+                    Raylib.DrawText($"{activeBattleState.Player.Hp} / {activeBattleState.Player.MaxHp}", 10, 26, 14, Color.White);
+                    DrawBar(10, 44, sideW - 22, 6, (float)activeBattleState.Player.Hp / Math.Max(activeBattleState.Player.MaxHp, 1), new Color(48, 200, 88, 255), new Color(28, 32, 40, 255));
+                    Raylib.DrawText($"NRG  {activeBattleState.Player.Energy}", 10, 56, 13, new Color(80, 185, 235, 255));
+                    Raylib.DrawText($"DIS  {activeBattleState.BurnPile.Count}", 110, 56, 13, new Color(205, 140, 48, 255));
+                    Raylib.DrawLine(0, 74, sideW, 74, new Color(35, 40, 52, 255));
 
                     for (int i = 0; i < activeBattleState.Hand.Count; i++)
                     {
                         if (dragging && i == draggingIndex) continue;
                         Rectangle cr = new Rectangle(10, 85 + i * (cpH + 6), cpW, cpH);
                         var hc = activeBattleState.Hand[i];
-                        DrawCard(cr, hc.Name, hc.Description, hc.Cost, Color.White, i == hoveredHandCard ? Color.Gold : Color.Black);
+                        DrawCard(cr, hc.Name, hc.Description, hc.Cost, new Color(20, 24, 34, 255), i == hoveredHandCard ? Color.Gold : new Color(50, 55, 70, 255));
                         if (Raylib.IsMouseButtonPressed(MouseButton.Left) && Raylib.CheckCollisionPointRec(mouse, cr) && !dragging)
                         {
                             dragging = true;
@@ -397,17 +485,22 @@ class Program
                     // === RIGHT SIDEBAR: Placed Cards / Enemy ===
                     Raylib.DrawRectangle(width - sideW, 0, sideW, height, new Color(18, 20, 25, 255));
                     Raylib.DrawLine(width - sideW, 0, width - sideW, height, new Color(50, 55, 65, 255));
-                    Raylib.DrawText("Bf preview for E", width - sideW + 8, 8, 13, Color.Gold);
-                    Raylib.DrawText(activeBattleNode?.Name ?? "Enemy", width - sideW + 8, 28, 12, Color.Red);
-                    Raylib.DrawText($"HP  {activeBattleState.Enemy.Hp}/{activeBattleState.Enemy.MaxHp}", width - sideW + 8, 44, 14, Color.White);
-                    Raylib.DrawText($"Fire  {activeBattleState.Enemy.ActiveElements.GetStacks(ElementType.Fire)}", width - sideW + 8, 62, 12, Color.Orange);
-                    Raylib.DrawText($"Frost {activeBattleState.Enemy.ActiveElements.GetStacks(ElementType.Frost)}", width - sideW + 90, 62, 12, Color.SkyBlue);
+                    Raylib.DrawText("ENEMY", width - sideW + 8, 8, 12, new Color(100, 105, 128, 255));
+                    int enw = Raylib.MeasureText(activeBattleNode?.Name ?? "Enemy", 12);
+                    Raylib.DrawText(activeBattleNode?.Name ?? "Enemy", Math.Min(width - sideW + 8, width - 8 - enw), 8, 12, new Color(195, 85, 75, 255));
+                    Raylib.DrawText($"{activeBattleState.Enemy.Hp} / {activeBattleState.Enemy.MaxHp}", width - sideW + 8, 26, 14, Color.White);
+                    DrawBar(width - sideW + 8, 44, sideW - 22, 6, (float)activeBattleState.Enemy.Hp / Math.Max(activeBattleState.Enemy.MaxHp, 1), new Color(200, 55, 55, 255), new Color(28, 32, 40, 255));
+                    int fireStacks  = activeBattleState.Enemy.ActiveElements.GetStacks(ElementType.Fire);
+                    int frostStacks = activeBattleState.Enemy.ActiveElements.GetStacks(ElementType.Frost);
+                    if (fireStacks  > 0) Raylib.DrawText($"Fire {fireStacks}",  width - sideW + 8,  56, 12, new Color(225, 115, 38, 255));
+                    if (frostStacks > 0) Raylib.DrawText($"Frost {frostStacks}", width - sideW + 82, 56, 12, new Color(88, 185, 235, 255));
+                    Raylib.DrawLine(width - sideW, 70, width, 70, new Color(35, 40, 52, 255));
 
                     for (int i = 0; i < activeBattleState.PlayerBoard.Count; i++)
                     {
                         var bSlot = activeBattleState.PlayerBoard[i];
                         bool bSel = activeBattleState.SelectedBoardSlot == i;
-                        Rectangle sr = new Rectangle(width - sideW + 10, 85 + i * (cpH + 6), cpW, cpH);
+                        Rectangle sr = new(width - sideW + 10, 78 + i * (cpH + 6), cpW, cpH);
                         if (bSlot.IsOccupied)
                         {
                             var occ = bSlot.Occupant!;
@@ -532,7 +625,7 @@ class Program
                         var previewCard = activeBattleState.Hand[hoveredHandCard];
                         int pvW = 240, pvH = 320;
                         Rectangle pvRect = new Rectangle(cx + (cw - pvW) / 2, height / 2 - pvH / 2, pvW, pvH);
-                        DrawCard(pvRect, previewCard.Name, previewCard.Description, previewCard.Cost, Color.White, Color.Gold);
+                        DrawCard(pvRect, previewCard.Name, previewCard.Description, previewCard.Cost, new Color(20, 24, 34, 255), Color.Gold);
                         int pwl = Raylib.MeasureText("drag to play", 14);
                         Raylib.DrawText("drag to play", (int)(pvRect.X + (pvW - pwl) / 2), (int)(pvRect.Y + pvH + 10), 14, Color.Gray);
                         if (Raylib.IsMouseButtonPressed(MouseButton.Left) && Raylib.CheckCollisionPointRec(mouse, pvRect) && !dragging)
@@ -545,21 +638,38 @@ class Program
                     }
                     else
                     {
-                        // Yellow "Battlefield" banner
-                        int banW = (int)(cw * 0.76f);
-                        int banH = 215;
-                        Rectangle banner = new Rectangle(cx + (cw - banW) / 2, height / 2 - banH / 2, banW, banH);
-                        Raylib.DrawRectangleRec(banner, new Color(255, 195, 45, 255));
-                        int btw = Raylib.MeasureText("Battlefield", 60);
-                        Raylib.DrawText("Battlefield", (int)(banner.X + (banW - btw) / 2), (int)(banner.Y + banH / 2 - 35), 60, Color.Black);
+                        // Battlefield banner
+                        int banW = (int)(cw * 0.72f);
+                        int banH = 210;
+                        int banX = cx + (cw - banW) / 2;
+                        int banY = height / 2 - banH / 2;
+                        Raylib.DrawRectangle(banX, banY, banW, banH, new Color(175, 138, 28, 255));
+                        // Inner shadow edges
+                        Raylib.DrawRectangleGradientV(banX, banY, banW, 30, new Color(0, 0, 0, 70), new Color(0, 0, 0, 0));
+                        Raylib.DrawRectangleGradientV(banX, banY + banH - 30, banW, 30, new Color(0, 0, 0, 0), new Color(0, 0, 0, 70));
+                        Raylib.DrawRectangleLinesEx(new Rectangle(banX, banY, banW, banH), 2f, new Color(220, 175, 40, 255));
+                        int btw = Raylib.MeasureText("Battlefield", 58);
+                        Raylib.DrawText("Battlefield", banX + (banW - btw) / 2, banY + banH / 2 - 36, 58, new Color(18, 15, 4, 200));
+                        int htw = Raylib.MeasureText("drag a card to deploy", 14);
+                        Raylib.DrawText("drag a card to deploy", banX + (banW - htw) / 2, banY + banH / 2 + 28, 14, new Color(30, 22, 4, 175));
                     }
 
-                    if (activeBattleState.Phase == TurnPhase.PlayerTurn && DrawButton(new Rectangle(cx + cw / 2 - 90, height - 95, 180, 42), "END TURN", new Color(50, 70, 42, 255), new Color(68, 100, 58, 255)))
+                    // Phase indicator + END TURN button
+                    bool isPlayerTurn = activeBattleState.Phase == TurnPhase.PlayerTurn;
+                    string phaseLabel = isPlayerTurn ? "YOUR TURN" : "ENEMY TURN";
+                    Color phaseCol    = isPlayerTurn ? new Color(88, 200, 110, 255) : new Color(210, 80, 68, 255);
+                    int phW = Raylib.MeasureText(phaseLabel, 14);
+                    Raylib.DrawRectangle(cx + cw / 2 - phW / 2 - 14, height - 102, phW + 28, 20, new Color(14, 16, 22, 200));
+                    Raylib.DrawText(phaseLabel, cx + cw / 2 - phW / 2, height - 100, 14, phaseCol);
+
+                    if (isPlayerTurn && DrawButton(new Rectangle(cx + cw / 2 - 88, height - 78, 176, 40), "END TURN", new Color(42, 68, 36, 255), new Color(60, 100, 52, 255)))
                         battleService.EndTurn();
 
-                    // Center bottom HUD
-                    Raylib.DrawRectangle(cx, height - 50, cw, 50, new Color(12, 13, 17, 220));
-                    Raylib.DrawText("[ENTER] End Turn   |   [SPACE] Execute Slot   |   Drag card to play", cx + 18, height - 33, 13, Color.Gray);
+                    // Bottom hint bar
+                    Raylib.DrawRectangle(cx, height - 34, cw, 34, new Color(10, 11, 16, 220));
+                    Raylib.DrawLine(cx, height - 34, cx + cw, height - 34, new Color(32, 36, 48, 255));
+                    int hintW = Raylib.MeasureText("[ENTER] End Turn   ·   [SPACE] Execute   ·   Drag card to play", 12);
+                    Raylib.DrawText("[ENTER] End Turn   ·   [SPACE] Execute   ·   Drag card to play", cx + cw / 2 - hintW / 2, height - 22, 12, new Color(72, 76, 96, 255));
 
                     // Floating drag ghost
                     if (dragging && draggingIndex >= 0 && draggingIndex < activeBattleState.Hand.Count)
@@ -571,13 +681,19 @@ class Program
                     // Win/Lose overlay
                     if (activeBattleState.Phase == TurnPhase.Finished)
                     {
-                        Raylib.DrawRectangle(0, 0, width, height, new Color(15, 15, 18, 230));
+                        Raylib.DrawRectangle(0, 0, width, height, new Color(8, 9, 13, 215));
                         if (activeBattleState.Enemy.IsDead)
                         {
-                            Raylib.DrawText("VICTORY CONCLUDED", width / 2 - 250, height / 2 - 50, 45, Color.Gold);
-                            Raylib.DrawText($"+60 Node Bounty Core Credits Awarded", width / 2 - 170, height / 2 + 15, 18, Color.LightGray);
-                            Raylib.DrawText($"New Schema Card [Bio Spore] Added to Collection Deck Pool", width / 2 - 240, height / 2 + 45, 16, Color.Lime);
-                            if (DrawButton(new Rectangle(width / 2 - 120, height / 2 + 95, 240, 50), "RETURN TO OVERWORLD", new Color(40, 75, 45, 255), new Color(60, 110, 65, 255)))
+                            Raylib.DrawRectangle(width / 2 - 290, height / 2 - 100, 580, 230, new Color(18, 22, 16, 240));
+                            Raylib.DrawRectangleLinesEx(new Rectangle(width / 2 - 290, height / 2 - 100, 580, 230), 1.5f, new Color(72, 185, 88, 160));
+                            int vcw = Raylib.MeasureText("VICTORY", 56);
+                            Raylib.DrawText("VICTORY", width / 2 - vcw / 2, height / 2 - 88, 56, Color.Gold);
+                            Raylib.DrawLineEx(new Vector2(width / 2 - 220f, height / 2 - 24f), new Vector2(width / 2 + 220f, height / 2 - 24f), 1f, new Color(68, 155, 78, 160));
+                            int r1w = Raylib.MeasureText("+60 Credits", 17);
+                            Raylib.DrawText("+60 Credits", width / 2 - r1w / 2, height / 2 - 10, 17, new Color(200, 185, 80, 255));
+                            int r2w = Raylib.MeasureText("Bio Spore added to collection", 14);
+                            Raylib.DrawText("Bio Spore added to collection", width / 2 - r2w / 2, height / 2 + 14, 14, new Color(88, 205, 110, 255));
+                            if (DrawButton(new Rectangle(width / 2 - 120, height / 2 + 60, 240, 44), "RETURN TO MAP", new Color(38, 72, 42, 255), new Color(55, 108, 62, 255)))
                             {
                                 profile.Gold += 60;
                                 profile.TotalCollection.Add(CardLibrary.BioSpore());
@@ -591,13 +707,17 @@ class Program
                         }
                         else
                         {
-                            Raylib.DrawText("DEFEAT PROTOCOL INITIALIZED", width / 2 - 320, height / 2 - 40, 40, Color.Red);
-                            if (DrawButton(new Rectangle(width / 2 - 120, height / 2 + 40, 240, 50), "RESET PROGRESS RUN", new Color(90, 35, 35, 255), new Color(130, 50, 50, 255)))
+                            Raylib.DrawRectangle(width / 2 - 270, height / 2 - 80, 540, 190, new Color(22, 14, 14, 240));
+                            Raylib.DrawRectangleLinesEx(new Rectangle(width / 2 - 270, height / 2 - 80, 540, 190), 1.5f, new Color(185, 52, 52, 160));
+                            int dfw = Raylib.MeasureText("DEFEAT", 56);
+                            Raylib.DrawText("DEFEAT", width / 2 - dfw / 2, height / 2 - 68, 56, new Color(215, 60, 60, 255));
+                            Raylib.DrawLineEx(new Vector2(width / 2 - 180f, height / 2 - 4f), new Vector2(width / 2 + 180f, height / 2 - 4f), 1f, new Color(155, 48, 48, 160));
+                            if (DrawButton(new Rectangle(width / 2 - 115, height / 2 + 22, 230, 44), "RESTART RUN", new Color(88, 28, 28, 255), new Color(128, 42, 42, 255)))
                             {
                                 profile.Gold = 150;
                                 profile.SkillPoints = 8;
                                 activeNodeIndex = 0;
-                                foreach (var node in campaignNodes) node.Completed = false;
+                                foreach (var cn in campaignNodes) cn.Completed = false;
                                 scene = GameScene.TitleScreen;
                             }
                         }
@@ -625,7 +745,7 @@ class Program
                     for (int i = 0; i < shopInventory.Count; i++)
                     {
                         int sx = 110 + i * 233;
-                        DrawCard(new Rectangle(sx, 168, 215, 268), shopInventory[i].Name, shopInventory[i].Description, shopInventory[i].Cost, Color.White, Color.DarkBlue);
+                        DrawCard(new Rectangle(sx, 168, 215, 268), shopInventory[i].Name, shopInventory[i].Description, shopInventory[i].Cost, new Color(20, 24, 34, 255), new Color(40, 62, 108, 255));
                         bool canAfford = profile.Gold >= cardShopCost;
                         if (DrawButton(new Rectangle(sx, 448, 215, 38), $"BUY  {cardShopCost} G",
                             canAfford ? new Color(35, 60, 45, 255) : new Color(42, 36, 36, 255),
@@ -747,21 +867,22 @@ class Program
                     break;
 
                 case GameScene.DeckBuilder:
-                    Raylib.DrawRectangle(0, 0, width, 60, new Color(18, 20, 24, 255));
-                    Raylib.DrawText($"DECK CONFIGURATION CORE MANAGER MATRIX", 30, 18, 20, Color.White);
-                    Raylib.DrawText($"Active Core Deck Volume: {profile.ActiveDeck.Count} cards", width - 350, 20, 18, Color.Yellow);
+                    Raylib.DrawRectangle(0, 0, width, 58, new Color(14, 16, 21, 255));
+                    Raylib.DrawLine(0, 58, width, 58, new Color(35, 40, 52, 255));
+                    Raylib.DrawText("DECK BUILDER", 28, 16, 22, Color.White);
+                    Raylib.DrawText($"{profile.ActiveDeck.Count} / 15", width - 115, 16, 20, Color.Yellow);
 
-                    if (DrawButton(new Rectangle(40, 90, 160, 40), "< SAVE AND EXIT", Color.DarkGreen, new Color(45, 120, 55, 255)))
+                    if (DrawButton(new Rectangle(40, 74, 155, 38), "< SAVE & EXIT", new Color(38, 72, 42, 255), new Color(55, 108, 62, 255)))
                         scene = GameScene.CampaignMap;
 
                     int colWidth = 150;
                     int colHeight = 200;
 
-                    Raylib.DrawText("ACTIVE ENGAGED LOADOUT DECK (Max 15 Config Cards)", 60, 150, 20, Color.Gold);
+                    Raylib.DrawText("ACTIVE DECK  —  click to remove", 60, 140, 16, new Color(195, 165, 52, 255));
                     for (int i = 0; i < profile.ActiveDeck.Count; i++)
                     {
                         Rectangle cardBox = new Rectangle(60 + i * (colWidth + 12), 190, colWidth, colHeight);
-                        DrawCard(cardBox, profile.ActiveDeck[i].Name, profile.ActiveDeck[i].Description, profile.ActiveDeck[i].Cost, Color.White, Color.DarkGreen);
+                        DrawCard(cardBox, profile.ActiveDeck[i].Name, profile.ActiveDeck[i].Description, profile.ActiveDeck[i].Cost, new Color(18, 22, 32, 255), new Color(38, 105, 52, 255));
 
                         if (Raylib.IsMouseButtonPressed(MouseButton.Left) && Raylib.CheckCollisionPointRec(mouse, cardBox) && !dragging)
                         {
@@ -770,7 +891,8 @@ class Program
                         }
                     }
 
-                    Raylib.DrawText("RESERVE UNLOCKED CARD CATALOG SCHEMA POOL (Drag/Drop to load above)", 60, height / 2 + 50, 20, Color.SkyBlue);
+                    Raylib.DrawLine(40, height / 2 + 38, width - 40, height / 2 + 38, new Color(35, 40, 52, 255));
+                    Raylib.DrawText("COLLECTION  —  drag to add to deck", 60, height / 2 + 46, 16, new Color(72, 155, 195, 255));
                     int itemsPerRow = (width - 120) / (colWidth + 12);
                     for (int i = 0; i < profile.TotalCollection.Count; i++)
                     {
@@ -780,7 +902,7 @@ class Program
 
                         if (dragging && isDraggingFromCollectionPool && draggingIndex == i) continue;
 
-                        DrawCard(cardBox, profile.TotalCollection[i].Name, profile.TotalCollection[i].Description, profile.TotalCollection[i].Cost, new Color(225, 230, 245, 255), Color.Black);
+                        DrawCard(cardBox, profile.TotalCollection[i].Name, profile.TotalCollection[i].Description, profile.TotalCollection[i].Cost, new Color(20, 24, 36, 255), new Color(48, 52, 70, 255));
 
                         if (Raylib.IsMouseButtonPressed(MouseButton.Left) && Raylib.CheckCollisionPointRec(mouse, cardBox) && !dragging)
                         {
