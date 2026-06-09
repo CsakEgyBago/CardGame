@@ -736,11 +736,16 @@ class Program
                         // Bottom-strip zones
                         Rectangle leftPileR  = new Rectangle(8,           height - 56, 110, 48);
                         Rectangle rightPileR = new Rectangle(width - 118, height - 56, 110, 48);
-                        bool leftHov  = Raylib.CheckCollisionPointRec(mouse, leftPileR);
-                        bool rightHov = Raylib.CheckCollisionPointRec(mouse, rightPileR);
-                        bool showGrid      = leftHov || rightHov || dragging;
+                        // Hand zone: pile button + card strip above it (490×210px bottom-left)
+                        Rectangle leftHoverZone = new Rectangle(0, height - 210, 490, 210);
+                        bool leftHov = Raylib.CheckCollisionPointRec(mouse, leftHoverZone);
+                        // Field always visible; execute mode activates when over the battle area (not hand zone, not dragging)
+                        int bTopApprox = (int)(height * 0.22f);
+                        Rectangle fieldHoverZone = new Rectangle(0, bTopApprox, width, height - bTopApprox - 56);
+                        bool rightHov = !leftHov && !dragging && Raylib.CheckCollisionPointRec(mouse, fieldHoverZone);
+                        bool showGrid      = true;   // always visible
                         bool showHandCards = leftHov || dragging;
-                        bool executeMode   = rightHov && !dragging;
+                        bool executeMode   = rightHov;
 
                         bool showFan = showHandCards; // alias for compat
 
@@ -1007,23 +1012,6 @@ class Program
                                 }
                             }
 
-                        }
-                        else
-                        {
-                            // Compact view when no pile hovered
-                            int cvY = epBot + 12, cvX = 28;
-                            Raylib.DrawText("DEPLOYED", cvX, cvY, 12, new Color(110, 88, 48, 200));
-                            for (int li = 0; li < bs.PlayerBoard.Count; li++)
-                            {
-                                var slt = bs.PlayerBoard[li];
-                                string sltStr = slt.IsOccupied
-                                    ? $"Lane {li}:  {slt.Occupant!.SourceCard.Name}   ATK {slt.Occupant.BaseAttack}   HP {slt.Occupant.Hp}/{slt.Occupant.MaxHp}"
-                                    : $"Lane {li}:  —";
-                                Raylib.DrawText(sltStr, cvX, cvY + 18 + li * 22, 12,
-                                    slt.IsOccupied ? fpText : new Color(60, 50, 34, 160));
-                            }
-                            int cvHint = Raylib.MeasureText("Hover HAND or FIELD to open battlefield", 12);
-                            Raylib.DrawText("Hover HAND or FIELD to open battlefield", width / 2 - cvHint / 2, height / 2 + 20, 12, new Color(80, 65, 40, 180));
                         }
 
                         // Fantasy drag ghost
