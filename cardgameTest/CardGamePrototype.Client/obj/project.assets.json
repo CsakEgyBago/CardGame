@@ -91,11 +91,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\mcm\\CardGame\\cardgametest\\cardgameprototype.client\\CardGamePrototype.Client.csproj",
+      "projectUniqueName": "D:\\mcm\\CardGame\\cardgametest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj",
       "projectName": "CardGamePrototype.Client",
-      "projectPath": "D:\\mcm\\CardGame\\cardgametest\\cardgameprototype.client\\CardGamePrototype.Client.csproj",
+      "projectPath": "D:\\mcm\\CardGame\\cardgametest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj",
       "packagesPath": "C:\\Users\\Gamer\\.nuget\\packages\\",
-      "outputPath": "D:\\mcm\\CardGame\\cardgametest\\cardgameprototype.client\\obj\\",
+      "outputPath": "D:\\mcm\\CardGame\\cardgametest\\CardGamePrototype.Client\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

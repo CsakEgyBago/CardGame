@@ -74,12 +74,17 @@ namespace CardGamePrototype.Core
 
         public void EndTurn()
         {
-            if (State.Phase != TurnPhase.PlayerTurn)
-                return;
-
+            if (State.Phase != TurnPhase.PlayerTurn) return;
             _turnManager.EndPlayerTurn(State);
-
             CheckBattleEnd();
+        }
+
+        public bool ActivateAbility()
+        {
+            if (State.Phase != TurnPhase.PlayerTurn) return false;
+            var ok = _turnManager.ActivateAbility(State);
+            CheckBattleEnd();
+            return ok;
         }
 
         private void CheckBattleEnd()
