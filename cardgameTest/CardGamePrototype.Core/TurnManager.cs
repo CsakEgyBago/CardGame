@@ -87,6 +87,7 @@ namespace CardGamePrototype.Core
             var unit = slot.Occupant!;
             int dmg = (unit.BaseAttack + state.AbilityUnitAttackBuff) * 2;
             state.Enemy.ReceiveDamage(dmg);
+            state.DamageLog.Add(new DamageEvent("enemy", dmg));
             ChargeAbility(state, dmg, dealt: true);
 
             foreach (var effect in unit.SourceCard.ExecutionerEffects)
@@ -105,11 +106,16 @@ namespace CardGamePrototype.Core
                 if (!slot.IsOccupied) continue;
                 int atk = slot.Occupant!.BaseAttack + state.AbilityUnitAttackBuff;
                 state.Enemy.ReceiveDamage(atk);
+                state.DamageLog.Add(new DamageEvent($"lane_{slot.Occupant.Position}", atk));
                 ChargeAbility(state, atk, dealt: true);
                 slot.TurnsOnBoard++;
                 if (state.Enemy.IsDead) break;
             }
 
+            if (state.Enemy.IsDead) { state.Phase = TurnPhase.Finished; return; }
+
+            // Status effect ticks (Fire burns, Bio poisons, Frost slows next attack)
+            TickStatusEffects(state);
             if (state.Enemy.IsDead) { state.Phase = TurnPhase.Finished; return; }
 
             state.Phase = TurnPhase.EnemyTurn;
@@ -156,9 +162,54 @@ namespace CardGamePrototype.Core
                                            state.EquippedAbility.MaxCharge);
         }
 
+        // What will the enemy do on its next turn? Call before EndPlayerTurn.
+        public static (string Action, int Damage, int Lane) GetEnemyIntent(BattleState state)
+        {
+            int attack = 8 + state.EnemyTurnCount;
+            // Frost reduces attack
+            int frost = state.Enemy.ActiveElements.GetStacks(ElementType.Frost);
+            attack = Math.Max(1, attack - frost * 2);
+            int pos = Math.Clamp(state.Enemy.Position, 0, state.PlayerBoard.Count - 1);
+            var slot = state.PlayerBoard[pos];
+            return slot.IsOccupied
+                ? ($"ATTACK UNIT  {attack + 2} dmg", attack + 2, pos)
+                : ($"ATTACK PLAYER  {attack - 2} dmg", attack - 2, pos);
+        }
+
+        private static void TickStatusEffects(BattleState state)
+        {
+            // Fire: 2 dmg per stack, -1 stack
+            int fire = state.Enemy.ActiveElements.GetStacks(ElementType.Fire);
+            if (fire > 0)
+            {
+                int burnDmg = fire * 2;
+                state.Enemy.ReceiveDamage(burnDmg);
+                state.DamageLog.Add(new DamageEvent("enemy_burn", burnDmg));
+                state.Enemy.ActiveElements.Consume(ElementType.Fire, 1);
+                ChargeAbility(state, burnDmg, dealt: true);
+            }
+            // Bio: 1 dmg per stack, -1 stack
+            int bio = state.Enemy.ActiveElements.GetStacks(ElementType.Bio);
+            if (bio > 0)
+            {
+                int poisonDmg = bio;
+                state.Enemy.ReceiveDamage(poisonDmg);
+                state.DamageLog.Add(new DamageEvent("enemy_bio", poisonDmg));
+                state.Enemy.ActiveElements.Consume(ElementType.Bio, 1);
+                ChargeAbility(state, poisonDmg, dealt: true);
+            }
+            // Frost: reduces attack (handled in GetEnemyIntent + EnemyAct), consume 1 stack
+            int frost = state.Enemy.ActiveElements.GetStacks(ElementType.Frost);
+            if (frost > 0)
+                state.Enemy.ActiveElements.Consume(ElementType.Frost, 1);
+        }
+
         private void EnemyAct(BattleState state)
         {
             int attack = 8 + state.EnemyTurnCount;
+            // Frost slow: already ticked down in TickStatusEffects, but we read remaining stacks
+            int frostRemaining = state.Enemy.ActiveElements.GetStacks(ElementType.Frost);
+            attack = Math.Max(1, attack - frostRemaining * 2);
             state.EnemyTurnCount++;
 
             if (state.Enemy.Position >= 0 && state.Enemy.Position < state.PlayerBoard.Count)
@@ -168,6 +219,7 @@ namespace CardGamePrototype.Core
                 {
                     int dmg = attack + 2;
                     slot.Occupant!.ReceiveDamage(dmg);
+                    state.DamageLog.Add(new DamageEvent($"lane_{state.Enemy.Position}", -dmg));
                     ChargeAbility(state, dmg, dealt: false);
                     if (slot.Occupant.IsDead) slot.Occupant = null;
                     MoveEnemy(state);
@@ -177,6 +229,7 @@ namespace CardGamePrototype.Core
 
             int playerDmg = attack - 2;
             state.Player.ReceiveDamage(playerDmg);
+            state.DamageLog.Add(new DamageEvent("player", -playerDmg));
             ChargeAbility(state, playerDmg, dealt: false);
             MoveEnemy(state);
         }

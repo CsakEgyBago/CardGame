@@ -4,7 +4,7 @@ using CardGamePrototype.Core;
 
 namespace CardGamePrototype.Client;
 
-public enum GameScene { TitleScreen, ModeSelect, CampaignMap, BattleView, MarketShop, DeckBuilder }
+public enum GameScene { TitleScreen, ModeSelect, CampaignMap, BattleView, MarketShop, DeckBuilder, RewardChoice }
 public enum GameTheme { SciFi, Fantasy }
 public enum NodeType { CombatMinion, CombatElite, CombatBoss }
 
@@ -16,6 +16,18 @@ public class CampaignNode
     public int EnemyHp { get; set; }
     public int EnemyDefaultPosition { get; set; }
     public bool Completed { get; set; }
+    public float MapX { get; set; } = 0.5f;
+    public float MapY { get; set; } = 0.5f;
+    public List<int> ChildIds { get; set; } = new();
+}
+
+// Floating damage number particle
+public struct FloatDmg
+{
+    public float X, Y, Vy;
+    public int Amount;
+    public float Life;  // 1.0 → 0 over ~1.2 s
+    public Color Col;
 }
 
 public class PlayerProfile
@@ -287,32 +299,34 @@ class Program
         GameTheme theme = GameTheme.SciFi;
         PlayerProfile profile = new PlayerProfile();
 
-        // Seed collection with 2 copies of every card
-        foreach (var c in CardLibrary.GetAll()) { profile.TotalCollection.Add(c); }
-        foreach (var c in CardLibrary.GetAll()) { profile.TotalCollection.Add(c); }
-
-        // Default deck — 10 unique cards
-        profile.ActiveDeck.AddRange(new[]
+        // Starter collection — 6 unique cards player begins with
+        var starterSet = new[]
         {
             CardLibrary.Ignite(), CardLibrary.Firebolt(), CardLibrary.Push(),
-            CardLibrary.FrostNova(), CardLibrary.BioSpore(), CardLibrary.IronGuard(),
-            CardLibrary.StormStrike(), CardLibrary.CryoShell(), CardLibrary.VoltStrike(),
-            CardLibrary.Inferno()
-        });
-
+            CardLibrary.FrostNova(), CardLibrary.BioSpore(), CardLibrary.IronGuard()
+        };
+        foreach (var c in starterSet) profile.TotalCollection.Add(c);
+        profile.ActiveDeck.AddRange(starterSet);
         profile.SelectedAbility = AbilityLibrary.Overclock();
 
+        // Branching campaign map
         List<CampaignNode> campaignNodes = new List<CampaignNode>
         {
-            new CampaignNode { Id = 0, Name = "Sector Delta Core", Type = NodeType.CombatMinion, EnemyHp = 35, EnemyDefaultPosition = 1 },
-            new CampaignNode { Id = 1, Name = "Outer Perimeter Gate", Type = NodeType.CombatMinion, EnemyHp = 45, EnemyDefaultPosition = 4 },
-            new CampaignNode { Id = 2, Name = "Arch-Executioner Frame", Type = NodeType.CombatElite, EnemyHp = 65, EnemyDefaultPosition = 2 },
-            new CampaignNode { Id = 3, Name = "The Catalyst Singularity", Type = NodeType.CombatBoss, EnemyHp = 100, EnemyDefaultPosition = 3 }
+            new CampaignNode { Id=0, Name="Catalyst Entrance",        Type=NodeType.CombatMinion, EnemyHp=30,  EnemyDefaultPosition=2, MapX=0.08f, MapY=0.50f, ChildIds=new(){1,2,3} },
+            new CampaignNode { Id=1, Name="Upper Flank",               Type=NodeType.CombatMinion, EnemyHp=44,  EnemyDefaultPosition=0, MapX=0.37f, MapY=0.18f, ChildIds=new(){4} },
+            new CampaignNode { Id=2, Name="Core Passage",              Type=NodeType.CombatMinion, EnemyHp=50,  EnemyDefaultPosition=2, MapX=0.37f, MapY=0.50f, ChildIds=new(){4} },
+            new CampaignNode { Id=3, Name="Lower Grid",                Type=NodeType.CombatMinion, EnemyHp=44,  EnemyDefaultPosition=4, MapX=0.37f, MapY=0.82f, ChildIds=new(){4} },
+            new CampaignNode { Id=4, Name="Arch-Executioner Frame",    Type=NodeType.CombatElite,  EnemyHp=75,  EnemyDefaultPosition=3, MapX=0.65f, MapY=0.50f, ChildIds=new(){5} },
+            new CampaignNode { Id=5, Name="The Catalyst Singularity",  Type=NodeType.CombatBoss,   EnemyHp=120, EnemyDefaultPosition=2, MapX=0.90f, MapY=0.50f, ChildIds=new() },
         };
-        int activeNodeIndex = 0;
+        HashSet<int> completedNodes = new();
 
         BattleService battleService = new BattleService();
         CampaignNode? activeBattleNode = null;
+
+        // Post-combat reward
+        List<CardDefinition> rewardOptions = new();
+        Random rewardRng = new();
 
         List<CardDefinition> shopInventory = new List<CardDefinition>
         {
@@ -329,13 +343,17 @@ class Program
         bool dragging = false;
         int draggingIndex = -1;
         Vector2 dragOffset = Vector2.Zero;
-        bool isDraggingFromCollectionPool = false; 
+        bool isDraggingFromCollectionPool = false;
+        List<FloatDmg> floatDmgs = new();
+        float enemyFlashTimer = 0f;
+        Vector2 enemyScreenPos = Vector2.Zero;
 
         while (!Raylib.WindowShouldClose())
         {
             int width = Raylib.GetScreenWidth();
             int height = Raylib.GetScreenHeight();
             Vector2 mouse = Raylib.GetMousePosition();
+            float dt = Raylib.GetFrameTime();
 
             // GLOBAL: Listen for F3 to toggle Skill Tree debug
             if (Raylib.IsKeyPressed(KeyboardKey.F3))
@@ -413,101 +431,109 @@ class Program
                     int cmHdr = Raylib.MeasureText("SECTOR MAP", 20);
                     Raylib.DrawText("SECTOR MAP", width / 2 - cmHdr / 2, 215, 20, new Color(115, 120, 142, 255));
 
-                    for (int i = 0; i < campaignNodes.Count; i++)
+                    // Which nodes can be fought next
+                    var availableIds = new HashSet<int>();
+                    if (completedNodes.Count == 0) availableIds.Add(0);
+                    foreach (var cn2 in campaignNodes)
+                        if (completedNodes.Contains(cn2.Id))
+                            foreach (var cid in cn2.ChildIds)
+                                if (!completedNodes.Contains(cid)) availableIds.Add(cid);
+
+                    // Node screen position helper
+                    int MapNX(CampaignNode n) => (int)(80 + n.MapX * (width - 160));
+                    int MapNY(CampaignNode n) => (int)(250 + n.MapY * (height - 380));
+
+                    // Draw connector lines first
+                    foreach (var cn2 in campaignNodes)
                     {
-                        var node = campaignNodes[i];
-                        int nodeX = 200 + i * (width - 400) / (campaignNodes.Count - 1);
-                        int nodeY = height / 2;
-
-                        if (i < campaignNodes.Count - 1)
+                        int px = MapNX(cn2), py = MapNY(cn2);
+                        foreach (var cid in cn2.ChildIds)
                         {
-                            int nextX = 200 + (i + 1) * (width - 400) / (campaignNodes.Count - 1);
-                            Color lineC = campaignNodes[i].Completed ? new Color(45, 130, 65, 220) : new Color(40, 44, 56, 255);
-                            Raylib.DrawLineEx(new Vector2(nodeX, nodeY), new Vector2(nextX, nodeY), 3f, lineC);
+                            var child = campaignNodes.Find(x => x.Id == cid)!;
+                            int cx2 = MapNX(child), cy2 = MapNY(child);
+                            Color lc = completedNodes.Contains(cn2.Id) && completedNodes.Contains(cid)
+                                ? new Color(45, 130, 65, 220)
+                                : completedNodes.Contains(cn2.Id) && availableIds.Contains(cid)
+                                    ? new Color(170, 130, 40, 180)
+                                    : new Color(38, 42, 54, 255);
+                            Raylib.DrawLineEx(new Vector2(px, py), new Vector2(cx2, cy2), 2.5f, lc);
                         }
+                    }
 
-                        Color nodeBase = node.Completed   ? new Color(28, 80, 42, 255)
-                                       : i == activeNodeIndex ? (node.Type == NodeType.CombatBoss ? new Color(95, 28, 28, 255) : new Color(85, 42, 18, 255))
-                                       : new Color(24, 26, 34, 255);
-                        Color nodeHov  = node.Completed   ? new Color(38, 105, 55, 255)
-                                       : i == activeNodeIndex ? (node.Type == NodeType.CombatBoss ? new Color(135, 38, 38, 255) : new Color(120, 60, 22, 255))
-                                       : new Color(34, 36, 46, 255);
-                        Color nodeBorder = node.Completed ? new Color(55, 185, 80, 200)
-                                         : i == activeNodeIndex ? (node.Type == NodeType.CombatBoss ? new Color(210, 55, 55, 200) : new Color(218, 130, 40, 200))
-                                         : new Color(48, 52, 66, 200);
+                    // Draw nodes
+                    foreach (var node in campaignNodes)
+                    {
+                        int nodeX = MapNX(node), nodeY = MapNY(node);
+                        bool isAvail   = availableIds.Contains(node.Id);
+                        bool nodeHov   = Raylib.CheckCollisionPointRec(mouse, new Rectangle(nodeX - 85, nodeY - 55, 170, 110)) && isAvail;
+
+                        Color nodeBase = node.Completed ? new Color(28, 80, 42, 255)
+                                       : isAvail ? (node.Type == NodeType.CombatBoss ? new Color(95, 28, 28, 255) : new Color(85, 42, 18, 255))
+                                       : new Color(18, 20, 28, 255);
+                        Color nodeHovC = node.Completed ? new Color(38, 105, 55, 255)
+                                       : node.Type == NodeType.CombatBoss ? new Color(135, 38, 38, 255) : new Color(120, 60, 22, 255);
+                        Color nodeBord = node.Completed ? new Color(55, 185, 80, 200)
+                                       : isAvail ? (node.Type == NodeType.CombatBoss ? new Color(210, 55, 55, 200) : new Color(218, 130, 40, 200))
+                                       : new Color(38, 40, 52, 180);
 
                         Rectangle nodeBox = new(nodeX - 85, nodeY - 55, 170, 110);
-                        bool nodeHovered = Raylib.CheckCollisionPointRec(mouse, nodeBox) && i == activeNodeIndex;
-                        Raylib.DrawRectangleRounded(nodeBox, 0.1f, 6, nodeHovered ? nodeHov : nodeBase);
-                        Raylib.DrawLineEx(new Vector2(nodeBox.X + 6, nodeBox.Y + 1.5f), new Vector2(nodeBox.X + nodeBox.Width - 6, nodeBox.Y + 1.5f), 1f, new Color(255, 255, 255, 30));
-                        Raylib.DrawRectangleRoundedLinesEx(nodeBox, 0.1f, 6, 1.5f, nodeBorder);
+                        Raylib.DrawRectangleRounded(nodeBox, 0.1f, 6, nodeHov ? nodeHovC : nodeBase);
+                        Raylib.DrawLineEx(new Vector2(nodeBox.X + 6, nodeBox.Y + 1.5f), new Vector2(nodeBox.X + nodeBox.Width - 6, nodeBox.Y + 1.5f), 1f, new Color(255, 255, 255, 28));
+                        Raylib.DrawRectangleRoundedLinesEx(nodeBox, 0.1f, 6, 1.5f, nodeBord);
 
-                        // Type label
+                        if (!isAvail && !node.Completed)
+                            Raylib.DrawRectangleRounded(nodeBox, 0.1f, 6, new Color(0, 0, 0, 120));
+
                         string typeTag = node.Type switch { NodeType.CombatElite => "ELITE", NodeType.CombatBoss => "BOSS", _ => "SECTOR" };
                         Color typeCol  = node.Type switch { NodeType.CombatElite => new Color(215, 168, 38, 255), NodeType.CombatBoss => new Color(210, 55, 55, 255), _ => new Color(120, 175, 125, 255) };
                         int ttw = Raylib.MeasureText(typeTag, 11);
-                        Raylib.DrawText(typeTag, nodeX - ttw / 2, nodeY - 48, 11, typeCol);
+                        Raylib.DrawText(typeTag, nodeX - ttw / 2, nodeY - 46, 11, typeCol);
 
-                        // Node name
-                        int nnw = Raylib.MeasureText(node.Name, 12);
-                        // Truncate long names so they fit
-                        string displayName = nnw > 152 ? node.Name[..14] + "…" : node.Name;
+                        string displayName = node.Name.Length > 16 ? node.Name[..15] + "…" : node.Name;
                         int dnw = Raylib.MeasureText(displayName, 12);
                         Raylib.DrawText(displayName, nodeX - dnw / 2, nodeY - 22, 12, node.Completed ? new Color(145, 210, 155, 255) : Color.White);
 
-                        // HP info
                         string hpStr = $"HP  {node.EnemyHp}";
                         int hpw = Raylib.MeasureText(hpStr, 11);
-                        Raylib.DrawText(hpStr, nodeX - hpw / 2, nodeY, 11, new Color(190, 100, 100, 255));
+                        Raylib.DrawText(hpStr, nodeX - hpw / 2, nodeY + 2, 11, new Color(190, 100, 100, 255));
 
-                        // Tier label / completed check
                         if (node.Completed)
                         {
                             int ckw = Raylib.MeasureText("CLEARED", 11);
-                            Raylib.DrawText("CLEARED", nodeX - ckw / 2, nodeY + 20, 11, new Color(75, 200, 95, 255));
+                            Raylib.DrawText("CLEARED", nodeX - ckw / 2, nodeY + 22, 11, new Color(75, 200, 95, 255));
                         }
-                        else
+                        else if (isAvail)
                         {
-                            string tierStr = $"Tier {i + 1}";
-                            int tw = Raylib.MeasureText(tierStr, 11);
-                            Raylib.DrawText(tierStr, nodeX - tw / 2, nodeY + 20, 11, new Color(95, 100, 120, 255));
+                            int ffw = Raylib.MeasureText("CLICK TO FIGHT", 10);
+                            Raylib.DrawText("CLICK TO FIGHT", nodeX - ffw / 2, nodeY + 22, 10, new Color(218, 130, 40, 220));
                         }
 
-                        if (nodeHovered && Raylib.IsMouseButtonPressed(MouseButton.Left) && i == activeNodeIndex)
+                        if (nodeHov && Raylib.IsMouseButtonPressed(MouseButton.Left))
                         {
                             activeBattleNode = node;
                             battleService.NewBattle();
-                            
                             battleService.State.DrawPile.Clear();
                             battleService.State.Hand.Clear();
                             battleService.State.BurnPile.Clear();
-                            
-                            // HP Bonus logic hooked up to white branch
+
                             int finalMaxHp = 50 + profile.MaxHpBonus;
-                            battleService.State.Player.MaxHp = finalMaxHp; 
-                            battleService.State.Player.Hp = finalMaxHp;
-                            
-                            battleService.State.Enemy.MaxHp = node.EnemyHp;
-                            battleService.State.Enemy.Hp = node.EnemyHp;
+                            battleService.State.Player.MaxHp = finalMaxHp;
+                            battleService.State.Player.Hp    = finalMaxHp;
+                            battleService.State.Enemy.MaxHp  = node.EnemyHp;
+                            battleService.State.Enemy.Hp     = node.EnemyHp;
                             battleService.State.Enemy.Position = node.EnemyDefaultPosition;
 
-                            List<CardDefinition> gameDeckCopy = new List<CardDefinition>(profile.ActiveDeck);
+                            List<CardDefinition> gameDeckCopy = new(profile.ActiveDeck);
                             for (int k = gameDeckCopy.Count - 1; k > 0; k--)
                             {
                                 int idx = battleService.State.Rng.Next(k + 1);
-                                var hold = gameDeckCopy[k];
-                                gameDeckCopy[k] = gameDeckCopy[idx];
-                                gameDeckCopy[idx] = hold;
+                                (gameDeckCopy[k], gameDeckCopy[idx]) = (gameDeckCopy[idx], gameDeckCopy[k]);
                             }
                             battleService.State.DrawPile.AddRange(gameDeckCopy);
-                            
-                            // Skill-tree bonuses + ability
                             battleService.State.PlayerEnergyBonus = profile.MaxEnergyBonus;
                             battleService.State.EquippedAbility   = profile.SelectedAbility;
                             battleService.State.Player.Energy     = 4 + profile.MaxEnergyBonus;
-                            // Draw initial hand (TurnManager's no-duplicate logic)
                             new TurnManager().DrawToHand(battleService.State);
-
                             scene = GameScene.BattleView;
                         }
                     }
@@ -515,6 +541,37 @@ class Program
 
                 case GameScene.BattleView:
                     var bs = battleService.State;
+
+                    // Consume damage log → spawn float numbers + trigger flash
+                    if (bs.DamageLog.Count > 0)
+                    {
+                        bool hitEnemy = bs.DamageLog.Any(e => e.Amount > 0 && e.Tag.StartsWith("enemy"));
+                        if (hitEnemy) enemyFlashTimer = 0.20f;
+                        foreach (var ev in bs.DamageLog)
+                        {
+                            bool isEnemyHit = ev.Amount > 0;
+                            Color fc = isEnemyHit ? new Color(255, 110, 50, 255) : new Color(215, 50, 50, 255);
+                            if (ev.Tag == "enemy_burn") fc = new Color(255, 165, 30, 255);
+                            if (ev.Tag == "enemy_bio")  fc = new Color(80, 210, 60, 255);
+                            Vector2 sp = ev.Tag == "player"
+                                ? new Vector2(width * 0.12f + rewardRng.Next(-18, 18), height * 0.52f)
+                                : new Vector2(enemyScreenPos.X + rewardRng.Next(-22, 22), enemyScreenPos.Y - 8);
+                            floatDmgs.Add(new FloatDmg { X = sp.X, Y = sp.Y, Vy = -62f,
+                                Amount = Math.Abs(ev.Amount), Life = 1.0f, Col = fc });
+                        }
+                        bs.DamageLog.Clear();
+                    }
+                    // Update float damage particles
+                    for (int fi = floatDmgs.Count - 1; fi >= 0; fi--)
+                    {
+                        var fd = floatDmgs[fi];
+                        fd.Y  += fd.Vy * dt;
+                        fd.Vy *= 0.93f;
+                        fd.Life -= dt * 0.85f;
+                        floatDmgs[fi] = fd;
+                        if (fd.Life <= 0) floatDmgs.RemoveAt(fi);
+                    }
+                    if (enemyFlashTimer > 0) enemyFlashTimer -= dt;
 
                     if (bs.Phase == TurnPhase.PlayerTurn)
                     {
@@ -579,7 +636,14 @@ class Program
                         int frS = bs.Enemy.ActiveElements.GetStacks(ElementType.Frost);
                         if (fS  > 0) Raylib.DrawText($"Fire {fS}",  width - SW + 8,  56, 12, new Color(225, 115, 38, 255));
                         if (frS > 0) Raylib.DrawText($"Frost {frS}", width - SW + 82, 56, 12, new Color(88, 185, 235, 255));
-                        Raylib.DrawLine(width - SW, 80, width, 80, new Color(35, 40, 52, 255));
+                        // Enemy intent
+                        {
+                            var (intentSF, dmgSF, laneSF) = TurnManager.GetEnemyIntent(bs);
+                            int inW = Raylib.MeasureText(intentSF, 10);
+                            int inX = width - SW + Math.Max(0, (SW - inW) / 2);
+                            Raylib.DrawText(intentSF, inX, 70, 10, new Color(210, 100, 60, 200));
+                        }
+                        Raylib.DrawLine(width - SW, 82, width, 82, new Color(35, 40, 52, 255));
 
                         for (int i = 0; i < bs.PlayerBoard.Count; i++)
                         {
@@ -650,6 +714,13 @@ class Program
                                 Raylib.DrawRectangleRounded(enemyZone, 0.06f, 4, Color.Maroon);
                                 int ehpW2 = Raylib.MeasureText($"{bs.Enemy.Hp}", 12);
                                 Raylib.DrawText($"{bs.Enemy.Hp}", (int)(enemyZone.X + (enemyZone.Width - ehpW2) / 2), (int)(enemyZone.Y + enemyZone.Height / 2 - 7), 12, Color.White);
+                                // Hit flash overlay
+                                if (enemyFlashTimer > 0)
+                                {
+                                    byte fa = (byte)Math.Min(200, (int)(enemyFlashTimer * 5 * 255));
+                                    Raylib.DrawRectangleRounded(enemyZone, 0.06f, 4, new Color((byte)255, (byte)255, (byte)255, fa));
+                                }
+                                enemyScreenPos = new Vector2(enemyZone.X + enemyZone.Width / 2f, enemyZone.Y + enemyZone.Height / 2f);
                             }
                             else
                             {
@@ -783,13 +854,11 @@ class Program
                         DrawBar(width / 2 - 180, 88, 360, 9, (float)bs.Enemy.Hp / Math.Max(bs.Enemy.MaxHp, 1), new Color(200, 55, 55, 255), new Color(28, 22, 18, 255));
                         int eHpW = Raylib.MeasureText($"{bs.Enemy.Hp} / {bs.Enemy.MaxHp}", 11);
                         Raylib.DrawText($"{bs.Enemy.Hp} / {bs.Enemy.MaxHp}", width / 2 - eHpW / 2, 101, 11, fpText);
-                        var laneSlot = bs.PlayerBoard[Math.Clamp(bs.Enemy.Position, 0, bs.PlayerBoard.Count - 1)];
-                        string intentStr = laneSlot.IsOccupied
-                            ? $"ATTACK ×{8 + bs.EnemyTurnCount}"
-                            : $"ADVANCE → Lane {bs.Enemy.Position}";
+                        var (intentStr, intentDmg, intentLane) = TurnManager.GetEnemyIntent(bs);
                         int intentW = Raylib.MeasureText(intentStr, 12);
+                        bool intentIsAttack = intentStr.StartsWith("ATTACK");
                         Raylib.DrawText(intentStr, width / 2 - intentW / 2, epBot - 36, 12,
-                            laneSlot.IsOccupied ? new Color(215, 80, 65, 255) : new Color(225, 185, 50, 255));
+                            intentIsAttack ? new Color(215, 80, 65, 255) : new Color(225, 185, 50, 255));
                         int eFire = bs.Enemy.ActiveElements.GetStacks(ElementType.Fire);
                         int eFrost = bs.Enemy.ActiveElements.GetStacks(ElementType.Frost);
                         if (eFire  > 0) Raylib.DrawText($"Fire {eFire}",  width / 2 - 120, epBot - 18, 11, new Color(225, 115, 38, 255));
@@ -962,6 +1031,13 @@ class Program
                                     Raylib.DrawCircleV(new Vector2(erCX3 - er3 * 0.28f, erCY3 - er3 * 0.14f), er3 * 0.13f, new Color(240, 200, 80, 255));
                                     Raylib.DrawCircleV(new Vector2(erCX3 + er3 * 0.28f, erCY3 - er3 * 0.14f), er3 * 0.13f, new Color(240, 200, 80, 255));
                                     Raylib.DrawLineEx(new Vector2(erCX3 - er3 * 0.26f, erCY3 + er3 * 0.25f), new Vector2(erCX3 + er3 * 0.26f, erCY3 + er3 * 0.25f), 2, new Color(240, 200, 80, 180));
+                                    // Hit flash overlay
+                                    if (enemyFlashTimer > 0)
+                                    {
+                                        byte fa = (byte)Math.Min(200, (int)(enemyFlashTimer * 5 * 255));
+                                        Raylib.DrawCircleV(new Vector2(erCX3, erCY3), er3, new Color((byte)255, (byte)255, (byte)255, fa));
+                                    }
+                                    enemyScreenPos = new Vector2(erCX3, erCY3);
                                     int ehpFPx = Raylib.MeasureText($"{bs.Enemy.Hp}", (int)Math.Max(10, 12 * sc3));
                                     Raylib.DrawText($"{bs.Enemy.Hp}", (int)(erCX3 - ehpFPx / 2), (int)(erCY3 + er3 + 2), (int)Math.Max(10, 12 * sc3), new Color(200, 180, 120, 255));
                                 }
@@ -1022,31 +1098,46 @@ class Program
                         }
                     }
 
+                    // Floating damage numbers
+                    foreach (var fd in floatDmgs)
+                    {
+                        byte alpha = (byte)Math.Max(0, Math.Min(255, (int)(fd.Life * 255)));
+                        Color fc2 = new Color(fd.Col.R, fd.Col.G, fd.Col.B, alpha);
+                        string dmgStr = fd.Amount > 0 ? $"-{fd.Amount}" : "0";
+                        int fnW = Raylib.MeasureText(dmgStr, 20);
+                        Raylib.DrawText(dmgStr, (int)(fd.X - fnW / 2), (int)fd.Y, 20, fc2);
+                    }
+
                     // Win/Lose overlay (both themes)
                     if (bs.Phase == TurnPhase.Finished)
                     {
                         Raylib.DrawRectangle(0, 0, width, height, new Color(8, 9, 13, 215));
                         if (bs.Enemy.IsDead)
                         {
-                            Raylib.DrawRectangle(width / 2 - 290, height / 2 - 100, 580, 230, new Color(18, 22, 16, 240));
-                            Raylib.DrawRectangleLinesEx(new Rectangle(width / 2 - 290, height / 2 - 100, 580, 230), 1.5f, new Color(72, 185, 88, 160));
+                            Raylib.DrawRectangle(width / 2 - 220, height / 2 - 80, 440, 170, new Color(18, 22, 16, 240));
+                            Raylib.DrawRectangleLinesEx(new Rectangle(width / 2 - 220, height / 2 - 80, 440, 170), 1.5f, new Color(72, 185, 88, 160));
                             int vcw = Raylib.MeasureText("VICTORY", 56);
-                            Raylib.DrawText("VICTORY", width / 2 - vcw / 2, height / 2 - 88, 56, Color.Gold);
-                            Raylib.DrawLineEx(new Vector2(width / 2 - 220f, height / 2 - 24f), new Vector2(width / 2 + 220f, height / 2 - 24f), 1f, new Color(68, 155, 78, 160));
-                            int r1w = Raylib.MeasureText("+60 Credits", 17);
-                            Raylib.DrawText("+60 Credits", width / 2 - r1w / 2, height / 2 - 10, 17, new Color(200, 185, 80, 255));
-                            int r2w = Raylib.MeasureText("Bio Spore added to collection", 14);
-                            Raylib.DrawText("Bio Spore added to collection", width / 2 - r2w / 2, height / 2 + 14, 14, new Color(88, 205, 110, 255));
-                            if (DrawButton(new Rectangle(width / 2 - 120, height / 2 + 60, 240, 44), "RETURN TO MAP", new Color(38, 72, 42, 255), new Color(55, 108, 62, 255)))
+                            Raylib.DrawText("VICTORY", width / 2 - vcw / 2, height / 2 - 72, 56, Color.Gold);
+                            Raylib.DrawLineEx(new Vector2(width / 2 - 180f, height / 2 - 8f), new Vector2(width / 2 + 180f, height / 2 - 8f), 1f, new Color(68, 155, 78, 160));
+                            int r1w2 = Raylib.MeasureText("+60 Credits  —  choose a card reward", 15);
+                            Raylib.DrawText("+60 Credits  —  choose a card reward", width / 2 - r1w2 / 2, height / 2 + 4, 15, new Color(200, 185, 80, 255));
+                            if (DrawButton(new Rectangle(width / 2 - 130, height / 2 + 40, 260, 44), "CHOOSE REWARD →", new Color(38, 72, 42, 255), new Color(55, 108, 62, 255)))
                             {
                                 profile.Gold += 60;
-                                profile.TotalCollection.Add(CardLibrary.BioSpore());
                                 if (activeBattleNode != null)
                                 {
                                     activeBattleNode.Completed = true;
-                                    if (activeNodeIndex < campaignNodes.Count - 1) activeNodeIndex++;
+                                    completedNodes.Add(activeBattleNode.Id);
                                 }
-                                scene = GameScene.CampaignMap;
+                                // Generate 3 distinct random card options
+                                var pool = CardLibrary.GetAll().ToList();
+                                for (int ri = pool.Count - 1; ri > 0; ri--)
+                                {
+                                    int rj = rewardRng.Next(ri + 1);
+                                    (pool[ri], pool[rj]) = (pool[rj], pool[ri]);
+                                }
+                                rewardOptions = pool.Take(3).ToList();
+                                scene = GameScene.RewardChoice;
                             }
                         }
                         else
@@ -1060,7 +1151,7 @@ class Program
                             {
                                 profile.Gold = 150;
                                 profile.SkillPoints = 8;
-                                activeNodeIndex = 0;
+                                completedNodes.Clear();
                                 foreach (var cn in campaignNodes) cn.Completed = false;
                                 scene = GameScene.TitleScreen;
                             }
@@ -1094,9 +1185,16 @@ class Program
                             int sRow = i / shopCols, sCol = i % shopCols;
                             int sx2 = 30 + sCol * (shopCardW + 12);
                             int sy2 = 168 + sRow * (shopCardH + 54);
-                            DrawCard(new Rectangle(sx2, sy2, shopCardW, shopCardH), shopInventory[i].Name, shopInventory[i].Description, shopInventory[i].Cost, new Color(20, 24, 34, 255), new Color(40, 62, 108, 255));
-                            bool canAfford = profile.Gold >= cardShopCost;
-                            if (DrawButton(new Rectangle(sx2, sy2 + shopCardH + 4, shopCardW, 36), $"BUY  {cardShopCost} G",
+                            bool alreadyOwned = profile.TotalCollection.Any(c => c.Id == shopInventory[i].Id);
+                            DrawCard(new Rectangle(sx2, sy2, shopCardW, shopCardH), shopInventory[i].Name, shopInventory[i].Description, shopInventory[i].Cost, new Color(20, 24, 34, 255), alreadyOwned ? new Color(55, 88, 55, 255) : new Color(40, 62, 108, 255));
+                            if (alreadyOwned)
+                            {
+                                int ownW = Raylib.MeasureText("OWNED", 11);
+                                Raylib.DrawRectangle(sx2 + shopCardW / 2 - ownW / 2 - 6, sy2 + shopCardH - 26, ownW + 12, 20, new Color(38, 88, 48, 230));
+                                Raylib.DrawText("OWNED", sx2 + shopCardW / 2 - ownW / 2, sy2 + shopCardH - 22, 11, new Color(80, 220, 100, 255));
+                            }
+                            bool canAfford = profile.Gold >= cardShopCost && !alreadyOwned;
+                            if (DrawButton(new Rectangle(sx2, sy2 + shopCardH + 4, shopCardW, 36), alreadyOwned ? "OWNED" : $"BUY  {cardShopCost} G",
                                 canAfford ? new Color(35, 60, 45, 255) : new Color(42, 36, 36, 255),
                                 canAfford ? new Color(50, 95, 65, 255) : new Color(58, 42, 42, 255)) && canAfford)
                             {
@@ -1323,6 +1421,52 @@ class Program
                         if (aHov && Raylib.IsMouseButtonPressed(MouseButton.Left))
                             profile.SelectedAbility = allAbils[i];
                     }
+                    break;
+                }
+
+                case GameScene.RewardChoice:
+                {
+                    Raylib.DrawRectangle(0, 0, width, height, new Color(10, 12, 18, 255));
+                    int rcHdrW = Raylib.MeasureText("CHOOSE A CARD", 32);
+                    Raylib.DrawText("CHOOSE A CARD", width / 2 - rcHdrW / 2, 60, 32, Color.Gold);
+                    int rcSubW = Raylib.MeasureText("Selected card is added to your collection", 16);
+                    Raylib.DrawText("Selected card is added to your collection", width / 2 - rcSubW / 2, 104, 16, new Color(130, 135, 155, 255));
+
+                    int rcCW = 240, rcCH = 320;
+                    int rcTotal = rcCW * rewardOptions.Count + 40 * (rewardOptions.Count - 1);
+                    int rcStartX = width / 2 - rcTotal / 2;
+                    for (int ri = 0; ri < rewardOptions.Count; ri++)
+                    {
+                        var rc = rewardOptions[ri];
+                        int rx = rcStartX + ri * (rcCW + 40);
+                        int ry = height / 2 - rcCH / 2;
+                        bool rcHov = Raylib.CheckCollisionPointRec(mouse, new Rectangle(rx, ry, rcCW, rcCH));
+                        float lift = rcHov ? -16f : 0f;
+                        Color rcBody = CardColorFromName(rc.Name);
+                        rcBody = new Color((byte)(rcBody.R / 4), (byte)(rcBody.G / 4), (byte)(rcBody.B / 4), (byte)255);
+                        DrawCard(new Rectangle(rx, ry + lift, rcCW, rcCH), rc.Name, rc.Description, rc.Cost,
+                            rcBody, rcHov ? Color.Gold : new Color(65, 68, 88, 255), rcHov);
+
+                        bool alreadyOwned = profile.TotalCollection.Any(c => c.Id == rc.Id);
+                        if (alreadyOwned)
+                        {
+                            int owW = Raylib.MeasureText("OWNED", 11);
+                            Raylib.DrawRectangle(rx + rcCW - owW - 10, (int)(ry + lift) + 4, owW + 8, 18, new Color(50, 140, 65, 200));
+                            Raylib.DrawText("OWNED", rx + rcCW - owW - 6, (int)(ry + lift) + 6, 11, Color.White);
+                        }
+
+                        if (rcHov && Raylib.IsMouseButtonPressed(MouseButton.Left))
+                        {
+                            profile.TotalCollection.Add(rc);
+                            scene = GameScene.CampaignMap;
+                        }
+                    }
+
+                    int skipW2 = Raylib.MeasureText("Skip reward", 13);
+                    Raylib.DrawText("Skip reward", width / 2 - skipW2 / 2, height / 2 + rcCH / 2 + 30, 13, new Color(80, 84, 100, 255));
+                    if (Raylib.CheckCollisionPointRec(mouse, new Rectangle(width / 2 - skipW2 / 2 - 4, height / 2 + rcCH / 2 + 26, skipW2 + 8, 22))
+                        && Raylib.IsMouseButtonPressed(MouseButton.Left))
+                        scene = GameScene.CampaignMap;
                     break;
                 }
             }

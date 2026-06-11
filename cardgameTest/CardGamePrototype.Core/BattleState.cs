@@ -1,5 +1,7 @@
 namespace CardGamePrototype.Core
 {
+    public readonly record struct DamageEvent(string Tag, int Amount);
+
     public class BattleState
     {
         public Player Player { get; set; }
@@ -30,6 +32,9 @@ namespace CardGamePrototype.Core
         public AbilityDefinition? EquippedAbility { get; set; }
         public float AbilityCharge                { get; set; }
         public int   AbilityUnitAttackBuff        { get; set; }
+
+        // Damage events produced this frame; client reads then clears.
+        public List<DamageEvent> DamageLog { get; } = new();
 
         public BattleState(Player player, Entity enemy, int seed)
         {
