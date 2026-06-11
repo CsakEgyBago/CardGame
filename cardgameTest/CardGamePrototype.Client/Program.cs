@@ -339,6 +339,16 @@ class Program
         Raylib.InitWindow(1600, 900, "Catalyst Architecture");
         Raylib.SetWindowState(ConfigFlags.ResizableWindow);
         Raylib.SetTargetFPS(60);
+        Raylib.InitAudioDevice();
+
+        string srcDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sources");
+        Sound[] whooshSounds = new Sound[5];
+        for (int wi = 0; wi < 5; wi++)
+            whooshSounds[wi] = Raylib.LoadSound(Path.Combine(srcDir, $"Whoosh_{wi + 1}.mp3"));
+        Sound[] hitSounds = new Sound[4];
+        for (int hi = 0; hi < 4; hi++)
+            hitSounds[hi] = Raylib.LoadSound(Path.Combine(srcDir, $"hit_{hi + 1}.mp3"));
+        Random sfxRng = new Random();
 
         bool dragging = false;
         int draggingIndex = -1;
@@ -542,11 +552,13 @@ class Program
                 case GameScene.BattleView:
                     var bs = battleService.State;
 
-                    // Consume damage log → spawn float numbers + trigger flash
+                    // Consume damage log → spawn float numbers + trigger flash + play hit sounds
                     if (bs.DamageLog.Count > 0)
                     {
                         bool hitEnemy = bs.DamageLog.Any(e => e.Amount > 0 && e.Tag.StartsWith("enemy"));
-                        if (hitEnemy) enemyFlashTimer = 0.20f;
+                        bool hitPlayer = bs.DamageLog.Any(e => e.Amount < 0);
+                        if (hitEnemy)  { enemyFlashTimer = 0.20f; Raylib.PlaySound(hitSounds[sfxRng.Next(4)]); }
+                        if (hitPlayer) Raylib.PlaySound(hitSounds[sfxRng.Next(4)]);
                         foreach (var ev in bs.DamageLog)
                         {
                             bool isEnemyHit = ev.Amount > 0;
@@ -745,7 +757,7 @@ class Program
                                 float t0 = (float)i / 5, t1 = (float)(i + 1) / 5;
                                 int px0d = (int)(bL + t0 * (bR - bL)) + 4, px1d = (int)(bL + t1 * (bR - bL)) - 4;
                                 Rectangle dz = new Rectangle(px0d, midY + 4, px1d - px0d, fBot - midY - 8);
-                                if (Raylib.CheckCollisionPointRec(mouse, dz)) { battleService.PlaceCard(draggingIndex, i); break; }
+                                if (Raylib.CheckCollisionPointRec(mouse, dz)) { if (battleService.PlaceCard(draggingIndex, i)) Raylib.PlaySound(whooshSounds[sfxRng.Next(5)]); break; }
                             }
                             dragging = false; draggingIndex = -1;
                         }
@@ -1049,7 +1061,7 @@ class Program
                                 for (int li = 0; li < 5; li++)
                                 {
                                     Rectangle dropFP = new Rectangle(bL3 + 2, laneY[li] + 2, splitX3 - 6, (laneY[li + 1] - laneY[li]) - 4);
-                                    if (Raylib.CheckCollisionPointRec(mouse, dropFP)) { battleService.PlaceCard(draggingIndex, li); break; }
+                                    if (Raylib.CheckCollisionPointRec(mouse, dropFP)) { if (battleService.PlaceCard(draggingIndex, li)) Raylib.PlaySound(whooshSounds[sfxRng.Next(5)]); break; }
                                 }
                                 dragging = false; draggingIndex = -1;
                             }
@@ -1474,6 +1486,9 @@ class Program
             Raylib.EndDrawing();
         }
 
+        foreach (var s in whooshSounds) Raylib.UnloadSound(s);
+        foreach (var s in hitSounds)   Raylib.UnloadSound(s);
+        Raylib.CloseAudioDevice();
         Raylib.CloseWindow();
     }
 }

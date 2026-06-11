@@ -13,4 +13,18 @@
   <ItemGroup>
     <ProjectReference Include="..\CardGamePrototype.Core\CardGamePrototype.Core.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\Sources\Whoosh_1.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\Whoosh_1.mp3</TargetPath></Content>
+    <Content Include="..\Sources\Whoosh_2.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\Whoosh_2.mp3</TargetPath></Content>
+    <Content Include="..\Sources\Whoosh_3.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\Whoosh_3.mp3</TargetPath></Content>
+    <Content Include="..\Sources\Whoosh_4.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\Whoosh_4.mp3</TargetPath></Content>
+    <Content Include="..\Sources\Whoosh_5.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\Whoosh_5.mp3</TargetPath></Content>
+    <Content Include="..\Sources\Whoosh_6.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\Whoosh_6.mp3</TargetPath></Content>
+    <Content Include="..\Sources\Whoosh_7.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\Whoosh_7.mp3</TargetPath></Content>
+    <Content Include="..\Sources\hit_1.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\hit_1.mp3</TargetPath></Content>
+    <Content Include="..\Sources\hit_2.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\hit_2.mp3</TargetPath></Content>
+    <Content Include="..\Sources\hit_3.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\hit_3.mp3</TargetPath></Content>
+    <Content Include="..\Sources\hit_4.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\hit_4.mp3</TargetPath></Content>
+  </ItemGroup>
 </Project>

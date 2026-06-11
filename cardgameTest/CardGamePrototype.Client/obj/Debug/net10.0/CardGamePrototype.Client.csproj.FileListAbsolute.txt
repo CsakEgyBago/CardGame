@@ -47,3 +47,14 @@ D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\obj\Debug\net10.0\refint\C
 D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\obj\Debug\net10.0\CardGamePrototype.Client.pdb
 D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\obj\Debug\net10.0\CardGamePrototype.Client.genruntimeconfig.cache
 D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\obj\Debug\net10.0\ref\CardGamePrototype.Client.dll
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\Whoosh_1.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\Whoosh_2.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\Whoosh_3.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\Whoosh_4.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\Whoosh_5.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\Whoosh_6.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\Whoosh_7.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\hit_1.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\hit_2.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\hit_3.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\hit_4.mp3
