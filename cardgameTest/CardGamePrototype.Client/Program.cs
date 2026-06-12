@@ -402,13 +402,16 @@ class Program
         // Branching campaign map
         List<CampaignNode> campaignNodes = new List<CampaignNode>
         {
-            new CampaignNode { Id=0, Name="Catalyst Entrance",        Type=NodeType.CombatMinion, EnemyHp=30,  EnemyDefaultPosition=2, MapX=0.08f, MapY=0.50f, ChildIds=new(){1,2,3} },
-            new CampaignNode { Id=1, Name="Upper Flank",               Type=NodeType.CombatMinion, EnemyHp=44,  EnemyDefaultPosition=0, MapX=0.37f, MapY=0.18f, ChildIds=new(){4} },
-            new CampaignNode { Id=2, Name="Core Passage",              Type=NodeType.CombatMinion, EnemyHp=50,  EnemyDefaultPosition=2, MapX=0.37f, MapY=0.50f, ChildIds=new(){4} },
-            new CampaignNode { Id=3, Name="Lower Grid",                Type=NodeType.CombatMinion, EnemyHp=44,  EnemyDefaultPosition=4, MapX=0.37f, MapY=0.82f, ChildIds=new(){4} },
-            new CampaignNode { Id=4, Name="Arch-Executioner Frame",    Type=NodeType.CombatElite,  EnemyHp=75,  EnemyDefaultPosition=3, MapX=0.65f, MapY=0.50f, ChildIds=new(){5,6} },
-            new CampaignNode { Id=5, Name="The Catalyst Singularity",  Type=NodeType.CombatBoss,   EnemyHp=120, EnemyDefaultPosition=2, MapX=0.90f, MapY=0.50f, ChildIds=new() },
-            new CampaignNode { Id=6, Name="Recharge Bay",              Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.90f, MapY=0.12f, ChildIds=new(){5} },
+            new CampaignNode { Id=0, Name="Catalyst Entrance",        Type=NodeType.CombatMinion, EnemyHp=30,  EnemyDefaultPosition=2, MapX=0.06f, MapY=0.50f, ChildIds=new(){1,2,3} },
+            new CampaignNode { Id=1, Name="Upper Flank",               Type=NodeType.CombatMinion, EnemyHp=44,  EnemyDefaultPosition=0, MapX=0.24f, MapY=0.18f, ChildIds=new(){4} },
+            new CampaignNode { Id=2, Name="Core Passage",              Type=NodeType.CombatMinion, EnemyHp=50,  EnemyDefaultPosition=2, MapX=0.24f, MapY=0.50f, ChildIds=new(){4,5} },
+            new CampaignNode { Id=3, Name="Lower Grid",                Type=NodeType.CombatMinion, EnemyHp=44,  EnemyDefaultPosition=4, MapX=0.24f, MapY=0.82f, ChildIds=new(){5} },
+            new CampaignNode { Id=4, Name="Pylon Alpha",               Type=NodeType.CombatMinion, EnemyHp=62,  EnemyDefaultPosition=1, MapX=0.44f, MapY=0.28f, ChildIds=new(){6} },
+            new CampaignNode { Id=5, Name="Recharge Alpha",            Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.44f, MapY=0.72f, ChildIds=new(){6} },
+            new CampaignNode { Id=6, Name="Arch-Executioner Frame",    Type=NodeType.CombatElite,  EnemyHp=80,  EnemyDefaultPosition=3, MapX=0.62f, MapY=0.50f, ChildIds=new(){7,8} },
+            new CampaignNode { Id=7, Name="Deep Core",                 Type=NodeType.CombatMinion, EnemyHp=68,  EnemyDefaultPosition=2, MapX=0.78f, MapY=0.22f, ChildIds=new(){9} },
+            new CampaignNode { Id=8, Name="Recharge Bay",              Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.78f, MapY=0.78f, ChildIds=new(){9} },
+            new CampaignNode { Id=9, Name="The Catalyst Singularity",  Type=NodeType.CombatBoss,   EnemyHp=130, EnemyDefaultPosition=2, MapX=0.93f, MapY=0.50f, ChildIds=new() },
         };
         HashSet<int> completedNodes = new();
 
@@ -1154,12 +1157,24 @@ class Program
                         // Drop release
                         if (!isPaused && !Raylib.IsMouseButtonDown(MouseButton.Left) && dragging && !isDraggingFromCollectionPool)
                         {
-                            for (int i = 0; i < 5; i++)
+                            bool sfPlayed = false;
+                            if (draggingIndex >= 0 && draggingIndex < bs.Hand.Count && bs.Hand[draggingIndex].CardType == CardType.Incantation)
                             {
-                                float t0 = (float)i / 5, t1 = (float)(i + 1) / 5;
-                                int px0d = (int)(bL + t0 * (bR - bL)) + 4, px1d = (int)(bL + t1 * (bR - bL)) - 4;
-                                Rectangle dz = new Rectangle(px0d, midY + 4, px1d - px0d, fBot - midY - 8);
-                                if (Raylib.CheckCollisionPointRec(mouse, dz)) { if (battleService.PlaceCard(draggingIndex, i)) Raylib.PlaySound(whooshSounds[sfxRng.Next(5)]); break; }
+                                Rectangle castArea = new Rectangle(gcx, fTop, gcw, fBot - fTop);
+                                if (Raylib.CheckCollisionPointRec(mouse, castArea))
+                                {
+                                    if (battleService.PlaceCard(draggingIndex, -1)) { Raylib.PlaySound(whooshSounds[sfxRng.Next(5)]); sfPlayed = true; }
+                                }
+                            }
+                            if (!sfPlayed)
+                            {
+                                for (int i = 0; i < 5; i++)
+                                {
+                                    float t0 = (float)i / 5, t1 = (float)(i + 1) / 5;
+                                    int px0d = (int)(bL + t0 * (bR - bL)) + 4, px1d = (int)(bL + t1 * (bR - bL)) - 4;
+                                    Rectangle dz = new Rectangle(px0d, midY + 4, px1d - px0d, fBot - midY - 8);
+                                    if (Raylib.CheckCollisionPointRec(mouse, dz)) { if (battleService.PlaceCard(draggingIndex, i)) Raylib.PlaySound(whooshSounds[sfxRng.Next(5)]); break; }
+                                }
                             }
                             dragging = false; draggingIndex = -1;
                         }
@@ -1449,8 +1464,8 @@ class Program
 
                             if (executeMode)
                             {
-                                int xhW3 = Raylib.MeasureText("CLICK UNIT TO EXECUTE  (costs 1 energy)", 12);
-                                Raylib.DrawText("CLICK UNIT TO EXECUTE  (costs 1 energy)", width / 2 - xhW3 / 2, (int)(lanesTop3 - 16), 12, new Color(80, 185, 235, 220));
+                                int xhW3 = Raylib.MeasureText("CLICK UNIT TO ACTIVATE SPECIAL  (costs 1 energy)", 12);
+                                Raylib.DrawText("CLICK UNIT TO ACTIVATE SPECIAL  (costs 1 energy)", width / 2 - xhW3 / 2, (int)(lanesTop3 - 16), 12, new Color(80, 185, 235, 220));
                             }
 
                             // Lane contents (units + enemy)
@@ -1532,10 +1547,22 @@ class Program
                             // Drop release onto lane
                             if (!isPaused && !Raylib.IsMouseButtonDown(MouseButton.Left) && dragging && !isDraggingFromCollectionPool)
                             {
-                                for (int li = 0; li < 5; li++)
+                                bool fpPlayed = false;
+                                if (draggingIndex >= 0 && draggingIndex < bs.Hand.Count && bs.Hand[draggingIndex].CardType == CardType.Incantation)
                                 {
-                                    Rectangle dropFP = new Rectangle(bL3 + 2, laneY[li] + 2, splitX3 - 6, (laneY[li + 1] - laneY[li]) - 4);
-                                    if (Raylib.CheckCollisionPointRec(mouse, dropFP)) { if (battleService.PlaceCard(draggingIndex, li)) Raylib.PlaySound(whooshSounds[sfxRng.Next(5)]); break; }
+                                    Rectangle castArea3 = new Rectangle(bL3, bTop3, bR3 - bL3, bBot3 - bTop3);
+                                    if (Raylib.CheckCollisionPointRec(mouse, castArea3))
+                                    {
+                                        if (battleService.PlaceCard(draggingIndex, -1)) { Raylib.PlaySound(whooshSounds[sfxRng.Next(5)]); fpPlayed = true; }
+                                    }
+                                }
+                                if (!fpPlayed)
+                                {
+                                    for (int li = 0; li < 5; li++)
+                                    {
+                                        Rectangle dropFP = new Rectangle(bL3 + 2, laneY[li] + 2, splitX3 - 6, (laneY[li + 1] - laneY[li]) - 4);
+                                        if (Raylib.CheckCollisionPointRec(mouse, dropFP)) { if (battleService.PlaceCard(draggingIndex, li)) Raylib.PlaySound(whooshSounds[sfxRng.Next(5)]); break; }
+                                    }
                                 }
                                 dragging = false; draggingIndex = -1;
                             }
@@ -1611,7 +1638,7 @@ class Program
                     // Keybinding hint bar
                     if (bs.Phase == TurnPhase.PlayerTurn && !isPaused && !showBurnPile)
                     {
-                        string hint = "ENTER  end turn    Q  ability    P  pause    SPACE  execute";
+                        string hint = "ENTER  end turn    Q  ability    P  pause    SPACE  special";
                         int hintPx = Raylib.MeasureText(hint, 11);
                         Raylib.DrawRectangle(width / 2 - hintPx / 2 - 10, height - 22, hintPx + 20, 18, new Color(0, 0, 0, 130));
                         Raylib.DrawText(hint, width / 2 - hintPx / 2, height - 20, 11, new Color(90, 95, 110, 200));

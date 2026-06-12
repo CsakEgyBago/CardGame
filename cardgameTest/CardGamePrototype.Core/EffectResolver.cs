@@ -21,6 +21,9 @@ namespace CardGamePrototype.Core
                 case EffectType.ConsumeElement:
                     ConsumeElement(e, state);
                     break;
+                case EffectType.HealPlayer:
+                    state.Player.Hp = Math.Min(state.Player.MaxHp, state.Player.Hp + e.Value);
+                    break;
                 case EffectType.Composite:
                     break;
             }

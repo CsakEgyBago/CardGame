@@ -26,7 +26,8 @@ namespace CardGamePrototype.Core
         Damage,
         Move,
         ConditionalDamage,
-        Composite
+        Composite,
+        HealPlayer
     }
 
     public enum TargetType

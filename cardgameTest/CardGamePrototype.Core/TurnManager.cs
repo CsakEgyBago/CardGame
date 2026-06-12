@@ -49,13 +49,27 @@ namespace CardGamePrototype.Core
 
         public bool PlaceCard(BattleState state, int handIndex, int slotIndex)
         {
-            if (handIndex < 0 || handIndex >= state.Hand.Count)        return false;
+            if (handIndex < 0 || handIndex >= state.Hand.Count) return false;
+            var card = state.Hand[handIndex];
+            if (card.Cost > state.Player.Energy) return false;
+
+            // Incantation (spell) cards auto-cast: resolve both catalyst + executioner effects
+            if (card.CardType == CardType.Incantation)
+            {
+                state.Player.Energy -= card.Cost;
+                state.PlacementsThisTurn++;
+                state.Hand.RemoveAt(handIndex);
+                CycleCard(state, card);
+                foreach (var effect in card.CatalystEffects)
+                    EffectResolver.ResolveEffect(effect, state);
+                foreach (var effect in card.ExecutionerEffects)
+                    EffectResolver.ResolveEffect(effect, state);
+                return true;
+            }
+
             if (slotIndex < 0 || slotIndex >= state.PlayerBoard.Count) return false;
             var slot = state.PlayerBoard[slotIndex];
             if (slot.IsOccupied) return false;
-
-            var card = state.Hand[handIndex];
-            if (card.Cost > state.Player.Energy) return false;
 
             state.Player.Energy -= card.Cost;
             state.PlacementsThisTurn++;
@@ -74,7 +88,7 @@ namespace CardGamePrototype.Core
             return true;
         }
 
-        // Execute costs 1 energy — less punishing than placing
+        // Execute costs 1 energy — unit attacks AND triggers its special effect, stays alive
         public bool ExecuteCard(BattleState state, int slotIndex)
         {
             if (slotIndex < 0 || slotIndex >= state.PlayerBoard.Count) return false;
@@ -86,17 +100,14 @@ namespace CardGamePrototype.Core
             state.ExecutionsThisTurn++;
 
             var unit = slot.Occupant!;
-            int dmg = (unit.BaseAttack + state.AbilityUnitAttackBuff) * 2;
-            state.Enemy.ReceiveDamage(dmg);
-            state.DamageLog.Add(new DamageEvent("enemy", dmg));
-            ChargeAbility(state, dmg, dealt: true);
+            int atk = unit.BaseAttack + state.AbilityUnitAttackBuff;
+            state.Enemy.ReceiveDamage(atk);
+            state.DamageLog.Add(new DamageEvent("enemy", atk));
+            ChargeAbility(state, atk, dealt: true);
 
             foreach (var effect in unit.SourceCard.ExecutionerEffects)
                 EffectResolver.ResolveEffect(effect, state);
 
-            CycleCard(state, unit.SourceCard);
-            state.BurnPile.Add(unit.SourceCard);
-            slot.Occupant = null;
             return true;
         }
 
@@ -269,7 +280,7 @@ namespace CardGamePrototype.Core
                 slot.Occupant!.ReceiveDamage(dmg);
                 state.DamageLog.Add(new DamageEvent($"lane_{pos}", -dmg));
                 ChargeAbility(state, dmg, dealt: false);
-                if (slot.Occupant.IsDead) slot.Occupant = null;
+                if (slot.Occupant.IsDead) { state.BurnPile.Add(slot.Occupant.SourceCard); slot.Occupant = null; }
                 return;
             }
             int playerDmg = Math.Max(1, attack - 2);
@@ -297,7 +308,7 @@ namespace CardGamePrototype.Core
                 slot.Occupant!.ReceiveDamage(dmg);
                 state.DamageLog.Add(new DamageEvent($"lane_{pos}", -dmg));
                 ChargeAbility(state, dmg, dealt: false);
-                if (slot.Occupant.IsDead) slot.Occupant = null;
+                if (slot.Occupant.IsDead) { state.BurnPile.Add(slot.Occupant.SourceCard); slot.Occupant = null; }
                 return;
             }
             state.Player.ReceiveDamage(atk);
@@ -322,7 +333,7 @@ namespace CardGamePrototype.Core
                         sl.Occupant!.ReceiveDamage(atk);
                         state.DamageLog.Add(new DamageEvent($"lane_{li}", -atk));
                         ChargeAbility(state, atk, dealt: false);
-                        if (sl.Occupant.IsDead) sl.Occupant = null;
+                        if (sl.Occupant.IsDead) { state.BurnPile.Add(sl.Occupant.SourceCard); sl.Occupant = null; }
                     }
                 }
                 state.Player.ReceiveDamage(atk);
@@ -339,7 +350,7 @@ namespace CardGamePrototype.Core
                 slot.Occupant!.ReceiveDamage(dmg);
                 state.DamageLog.Add(new DamageEvent($"lane_{pos}", -dmg));
                 ChargeAbility(state, dmg, dealt: false);
-                if (slot.Occupant.IsDead) slot.Occupant = null;
+                if (slot.Occupant.IsDead) { state.BurnPile.Add(slot.Occupant.SourceCard); slot.Occupant = null; }
                 return;
             }
             state.Player.ReceiveDamage(atk);
