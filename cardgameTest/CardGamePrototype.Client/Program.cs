@@ -480,6 +480,7 @@ class Program
         float mapNoticeTimer = 0f;
 
         float deckScrollY = 0f;
+        float shopScrollY = 0f;
 
         // Pause menu
         bool isPaused = false;
@@ -495,6 +496,12 @@ class Program
 
         // Load saved run if one exists
         LoadGame(profile, completedNodes, campaignNodes);
+        if (profile.TotalCollection.Count == 0)
+        {
+            var allLib = CardLibrary.GetAll().ToDictionary(c => c.Id);
+            foreach (var sid in new[] { "ignite", "firebolt", "bio_spore", "bone_spear", "storm_strike", "iron_guard", "ember_core", "surge_bolt" })
+                if (allLib.TryGetValue(sid, out var sc)) profile.TotalCollection.Add(sc);
+        }
 
         bool exitGame = false;
         while (!Raylib.WindowShouldClose() && !exitGame)
@@ -751,7 +758,7 @@ class Program
                             if (isRest)
                             {
                                 int restMaxHp = 80 + profile.MaxHpBonus;
-                                int healAmt   = Math.Max(1, (int)(restMaxHp * 0.30f));
+                                int healAmt   = Math.Max(1, (int)(restMaxHp * 0.40f));
                                 int curHp     = profile.PlayerHp > 0 ? profile.PlayerHp : restMaxHp;
                                 profile.PlayerHp = Math.Min(restMaxHp, curHp + healAmt);
                                 node.Completed = true;
@@ -1065,6 +1072,7 @@ class Program
                         int dzLW = Raylib.MeasureText("▼ DEPLOY ZONE", 10);
                         Raylib.DrawText("▼ DEPLOY ZONE", gcx + (gcw - dzLW) / 2, fBot - 16, 10, new Color(0, 180, 0, 180));
 
+                        string? hovUnitDesc8 = null; Vector2 hovUnitPos8 = Vector2.Zero;
                         for (int i = 0; i < 5; i++)
                         {
                             int px0 = bL + i * (bR - bL) / 5 + 3;
@@ -1150,6 +1158,8 @@ class Program
                                 Raylib.DrawText($"ATK{occ.BaseAttack}", (int)(dropZone.X + (dropZone.Width - aLblW) / 2), (int)(dropZone.Y + dropZone.Height - 18), 10, px8Cyn);
                                 DrawBar(dropZone.X + 4, dropZone.Y + dropZone.Height - 8, dropZone.Width - 8, 4,
                                     (float)occ.Hp / Math.Max(occ.MaxHp, 1), px8Grn, new Color(0, 20, 0, 255));
+                                if (!dragging && Raylib.CheckCollisionPointRec(mouse, dropZone))
+                                { hovUnitDesc8 = occ.SourceCard.Description; hovUnitPos8 = new Vector2(dropZone.X + dropZone.Width / 2f, dropZone.Y - 4); }
                             }
                             // Death flash on grid slot
                             if (i < 5 && slotFlashTimers[i] > 0)
@@ -1157,6 +1167,18 @@ class Program
                                 byte fg8 = (byte)Math.Min(200, (int)(slotFlashTimers[i] / 0.3f * 200));
                                 Raylib.DrawRectangleRec(dropZone, new Color((byte)255, (byte)255, (byte)255, fg8));
                             }
+                        }
+                        if (hovUnitDesc8 != null)
+                        {
+                            string[] ttLines = hovUnitDesc8.Split('\n');
+                            int ttW = 10; foreach (var tl in ttLines) { int tw = Raylib.MeasureText(tl, 11); if (tw + 16 > ttW) ttW = tw + 16; }
+                            int ttH = ttLines.Length * 16 + 10;
+                            int ttX = Math.Clamp((int)hovUnitPos8.X - ttW / 2, 4, width - ttW - 4);
+                            int ttY = Math.Max(4, (int)hovUnitPos8.Y - ttH);
+                            Raylib.DrawRectangleRounded(new Rectangle(ttX, ttY, ttW, ttH), 0.1f, 4, new Color(10, 14, 20, 235));
+                            Raylib.DrawRectangleRoundedLinesEx(new Rectangle(ttX, ttY, ttW, ttH), 0.1f, 4, 1f, new Color(60, 90, 110, 200));
+                            for (int li = 0; li < ttLines.Length; li++)
+                                Raylib.DrawText(ttLines[li], ttX + 8, ttY + 5 + li * 16, 11, new Color(190, 220, 240, 255));
                         }
 
                         // Drop release
@@ -1474,6 +1496,7 @@ class Program
                             }
 
                             // Lane contents (units + enemy)
+                            string? hovUnitDesc3 = null; Vector2 hovUnitPos3 = Vector2.Zero;
                             for (int li = 0; li < 5; li++)
                             {
                                 float lT3 = laneY[li], lB3 = laneY[li + 1], lHx = lB3 - lT3;
@@ -1509,6 +1532,8 @@ class Program
                                     }
                                     else if (!isPaused && Raylib.IsMouseButtonPressed(MouseButton.Left) && Raylib.CheckCollisionPointRec(mouse, deployHitFP))
                                         bs.SelectedBoardSlot = bs.SelectedBoardSlot == li ? -1 : li;
+                                    if (!dragging && Raylib.CheckCollisionPointRec(mouse, deployHitFP))
+                                    { hovUnitDesc3 = occ3.SourceCard.Description; hovUnitPos3 = new Vector2(deployHitFP.X + deployHitFP.Width / 2f, deployHitFP.Y - 4); }
                                 }
                                 else if (!isDeployTgt)
                                 {
@@ -1547,6 +1572,18 @@ class Program
                                     int ehpFPx = Raylib.MeasureText($"{bs.Enemy.Hp}", (int)Math.Max(10, 12 * sc3));
                                     Raylib.DrawText($"{bs.Enemy.Hp}", (int)(erCX3 - ehpFPx / 2), (int)(erCY3 + er3 + 2), (int)Math.Max(10, 12 * sc3), new Color(200, 180, 120, 255));
                                 }
+                            }
+                            if (hovUnitDesc3 != null)
+                            {
+                                string[] ttLines3 = hovUnitDesc3.Split('\n');
+                                int ttW3 = 10; foreach (var tl in ttLines3) { int tw = Raylib.MeasureText(tl, 11); if (tw + 16 > ttW3) ttW3 = tw + 16; }
+                                int ttH3 = ttLines3.Length * 16 + 10;
+                                int ttX3 = Math.Clamp((int)hovUnitPos3.X - ttW3 / 2, 4, width - ttW3 - 4);
+                                int ttY3 = Math.Max(4, (int)hovUnitPos3.Y - ttH3);
+                                Raylib.DrawRectangleRounded(new Rectangle(ttX3, ttY3, ttW3, ttH3), 0.1f, 4, new Color(20, 15, 8, 235));
+                                Raylib.DrawRectangleRoundedLinesEx(new Rectangle(ttX3, ttY3, ttW3, ttH3), 0.1f, 4, 1f, new Color(130, 100, 48, 200));
+                                for (int li2 = 0; li2 < ttLines3.Length; li2++)
+                                    Raylib.DrawText(ttLines3[li2], ttX3 + 8, ttY3 + 5 + li2 * 16, 11, new Color(230, 210, 160, 255));
                             }
 
                             // Drop release onto lane
@@ -1661,12 +1698,13 @@ class Program
                         if (bs.Enemy.IsDead)
                         {
                             int goldReward = (activeBattleNode?.Type switch { NodeType.CombatElite => 80, NodeType.CombatBoss => 120, _ => 60 }) + profile.GoldBonus;
-                            Raylib.DrawRectangle(width / 2 - 220, height / 2 - 80, 440, 205, new Color(18, 22, 16, 240));
-                            Raylib.DrawRectangleLinesEx(new Rectangle(width / 2 - 220, height / 2 - 80, 440, 205), 1.5f, new Color(72, 185, 88, 160));
+                            int spReward = activeBattleNode?.Type == NodeType.CombatElite ? 2 : 1;
+                            Raylib.DrawRectangle(width / 2 - 220, height / 2 - 80, 440, 215, new Color(18, 22, 16, 240));
+                            Raylib.DrawRectangleLinesEx(new Rectangle(width / 2 - 220, height / 2 - 80, 440, 215), 1.5f, new Color(72, 185, 88, 160));
                             int vcw = Raylib.MeasureText("VICTORY", 56);
                             Raylib.DrawText("VICTORY", width / 2 - vcw / 2, height / 2 - 72, 56, Color.Gold);
                             Raylib.DrawLineEx(new Vector2(width / 2 - 180f, height / 2 - 8f), new Vector2(width / 2 + 180f, height / 2 - 8f), 1f, new Color(68, 155, 78, 160));
-                            string goldLine = $"+{goldReward} Credits  —  choose a card reward";
+                            string goldLine = $"+{goldReward} Credits  +{spReward} SP  —  choose a card reward";
                             int r1w2 = Raylib.MeasureText(goldLine, 15);
                             Raylib.DrawText(goldLine, width / 2 - r1w2 / 2, height / 2 + 4, 15, new Color(200, 185, 80, 255));
                             string winStats = $"Turns: {bs.EnemyTurnCount}   Cards played: {bs.CardsPlayedTotal}   HP left: {bs.Player.Hp}/{bs.Player.MaxHp}";
@@ -1690,8 +1728,13 @@ class Program
                                 }
                                 else
                                 {
-                                    // Generate 3 distinct random card options
-                                    var pool = CardLibrary.GetAll().ToList();
+                                    // SP reward per battle
+                                    profile.SkillPoints += activeBattleNode?.Type == NodeType.CombatElite ? 2 : 1;
+                                    // Generate 3 distinct random card options — exclude already owned
+                                    var pool = CardLibrary.GetAll()
+                                        .Where(c => !profile.TotalCollection.Any(t => t.Id == c.Id))
+                                        .ToList();
+                                    if (pool.Count < 3) pool = CardLibrary.GetAll().ToList();
                                     for (int ri = pool.Count - 1; ri > 0; ri--)
                                     {
                                         int rj = rewardRng.Next(ri + 1);
@@ -1727,6 +1770,9 @@ class Program
                                     profile.SkillTree.Reset();
                                     profile.SkillPoints = 8;
                                     profile.PlayerHp = 0;
+                                    profile.TotalCollection.Clear();
+                                    profile.ActiveDeck.Clear();
+                                    { var aL2 = CardLibrary.GetAll().ToDictionary(c => c.Id); foreach (var sid in new[] { "ignite", "firebolt", "bio_spore", "bone_spear", "storm_strike", "iron_guard", "ember_core", "surge_bolt" }) if (aL2.TryGetValue(sid, out var sc2)) profile.TotalCollection.Add(sc2); }
                                     completedNodes.Clear();
                                     foreach (var cn in campaignNodes) cn.Completed = false;
                                     SaveGame(profile, completedNodes);
@@ -1754,18 +1800,31 @@ class Program
                     // Vertical divider
                     Raylib.DrawLine(width / 2, 60, width / 2, height, new Color(35, 40, 50, 255));
 
-                    // === LEFT HALF: SHOP  (4 per row, 2 rows max) ===
+                    // === LEFT HALF: SHOP (scrollable) ===
                     Raylib.DrawText("SCHEMA CARDS", 30, 132, 18, Color.Gold);
                     Raylib.DrawLine(30, 156, width / 2 - 20, 156, new Color(90, 75, 25, 110));
                     {
-                        int shopCols = 4;
-                        int shopCardW = (width / 2 - 60) / shopCols - 12;
-                        int shopCardH = 220;
+                        int shopCols = 3;
+                        int shopCardW = (width / 2 - 60) / shopCols - 10;
+                        int shopCardH = 185;
+                        int shopBtnH  = 34;
+                        int shopRowH  = shopCardH + shopBtnH + 14;
+                        int shopGridTop = 162;
+                        int shopHalfW   = width / 2;
+
+                        // Scroll input
+                        if (Raylib.CheckCollisionPointRec(mouse, new Rectangle(0, shopGridTop, shopHalfW, height - shopGridTop)))
+                            shopScrollY -= Raylib.GetMouseWheelMove() * 55f;
+                        int shopTotalRows = (shopInventory.Count + shopCols - 1) / shopCols;
+                        float shopMaxScroll = Math.Max(0f, shopTotalRows * shopRowH - (height - shopGridTop - 4));
+                        shopScrollY = Math.Clamp(shopScrollY, 0f, shopMaxScroll);
+
+                        Raylib.BeginScissorMode(0, shopGridTop, shopHalfW, height - shopGridTop);
                         for (int i = 0; i < shopInventory.Count; i++)
                         {
                             int sRow = i / shopCols, sCol = i % shopCols;
-                            int sx2 = 30 + sCol * (shopCardW + 12);
-                            int sy2 = 168 + sRow * (shopCardH + 54);
+                            int sx2 = 30 + sCol * (shopCardW + 10);
+                            int sy2 = shopGridTop + sRow * shopRowH - (int)shopScrollY;
                             bool alreadyOwned = profile.TotalCollection.Any(c => c.Id == shopInventory[i].Id);
                             DrawCard(new Rectangle(sx2, sy2, shopCardW, shopCardH), shopInventory[i].Name, shopInventory[i].Description, shopInventory[i].Cost, new Color(20, 24, 34, 255), alreadyOwned ? new Color(55, 88, 55, 255) : new Color(40, 62, 108, 255));
                             if (alreadyOwned)
@@ -1775,7 +1834,7 @@ class Program
                                 Raylib.DrawText("OWNED", sx2 + shopCardW / 2 - ownW / 2, sy2 + shopCardH - 22, 11, new Color(80, 220, 100, 255));
                             }
                             bool canAfford = profile.Gold >= cardShopCost && !alreadyOwned;
-                            if (DrawButton(new Rectangle(sx2, sy2 + shopCardH + 4, shopCardW, 36), alreadyOwned ? "OWNED" : $"BUY  {cardShopCost} G",
+                            if (DrawButton(new Rectangle(sx2, sy2 + shopCardH + 4, shopCardW, shopBtnH), alreadyOwned ? "OWNED" : $"BUY  {cardShopCost} G",
                                 canAfford ? new Color(35, 60, 45, 255) : new Color(42, 36, 36, 255),
                                 canAfford ? new Color(50, 95, 65, 255) : new Color(58, 42, 42, 255)) && canAfford)
                             {
@@ -1783,6 +1842,17 @@ class Program
                                 profile.TotalCollection.Add(shopInventory[i]);
                                 Raylib.PlaySound(ui2Sound);
                             }
+                        }
+                        Raylib.EndScissorMode();
+
+                        // Scrollbar
+                        if (shopMaxScroll > 0)
+                        {
+                            float ssbH = (height - shopGridTop) * ((float)(height - shopGridTop) / (shopTotalRows * shopRowH));
+                            ssbH = Math.Max(20f, ssbH);
+                            float ssbY = shopGridTop + (height - shopGridTop - ssbH) * (shopScrollY / shopMaxScroll);
+                            Raylib.DrawRectangle(shopHalfW - 6, shopGridTop, 4, height - shopGridTop, new Color(22, 24, 30, 200));
+                            Raylib.DrawRectangle(shopHalfW - 6, (int)ssbY, 4, (int)ssbH, new Color(80, 68, 30, 255));
                         }
                     }
 
@@ -1909,7 +1979,7 @@ class Program
                     if (DrawButton(new Rectangle(width - 220, 9, 200, 40), "< SAVE & EXIT", new Color(38, 72, 42, 255), new Color(55, 108, 62, 255)))
                         scene = GameScene.CampaignMap;
 
-                    var allCards = CardLibrary.GetAll().ToList();
+                    var allCards = profile.TotalCollection.Count > 0 ? profile.TotalCollection : CardLibrary.GetAll().ToList();
                     int panelTop = 66;
                     int splitX = (int)(width * 0.62f);
                     Raylib.DrawLine(splitX, panelTop, splitX, height, new Color(35, 40, 52, 200));
@@ -1919,7 +1989,7 @@ class Program
                     int dbCW = (splitX - dbMargin * 2 - dbGap * (dbCols - 1)) / dbCols;
                     int dbCH = (int)(dbCW * 1.40f);
                     int dbGridTop = panelTop + 24;
-                    Raylib.DrawText("COLLECTION — click to add/remove", dbMargin, panelTop + 6, 12, new Color(90, 95, 112, 255));
+                    Raylib.DrawText($"COLLECTION ({allCards.Count}) — click to add/remove", dbMargin, panelTop + 6, 12, new Color(90, 95, 112, 255));
 
                     if (Raylib.CheckCollisionPointRec(mouse, new Rectangle(0, panelTop, splitX, height - panelTop)))
                         deckScrollY -= Raylib.GetMouseWheelMove() * 50f;
@@ -2105,7 +2175,7 @@ class Program
                     int vcSW = Raylib.MeasureText("THE CATALYST SINGULARITY DEFEATED", 20);
                     Raylib.DrawText("THE CATALYST SINGULARITY DEFEATED", width / 2 - vcSW / 2, height / 2 - 76, 20, new Color(188, 220, 188, 255));
                     Raylib.DrawLineEx(new Vector2(width / 2 - 220f, height / 2 - 46f), new Vector2(width / 2 + 220f, height / 2 - 46f), 1.5f, new Color(80, 160, 80, 160));
-                    int vcMaxHp = 50 + profile.MaxHpBonus;
+                    int vcMaxHp = 80 + profile.MaxHpBonus;
                     int vcHpLeft = profile.PlayerHp > 0 ? profile.PlayerHp : vcMaxHp;
                     string vcStats = $"HP remaining: {vcHpLeft}/{vcMaxHp}   Gold: {profile.Gold} G   Cards collected: {profile.TotalCollection.Count}";
                     int vcStW = Raylib.MeasureText(vcStats, 14);
@@ -2116,6 +2186,9 @@ class Program
                         profile.SkillTree.Reset();
                         profile.SkillPoints = 8;
                         profile.PlayerHp = 0;
+                        profile.TotalCollection.Clear();
+                        profile.ActiveDeck.Clear();
+                        { var aL3 = CardLibrary.GetAll().ToDictionary(c => c.Id); foreach (var sid in new[] { "ignite", "firebolt", "bio_spore", "bone_spear", "storm_strike", "iron_guard", "ember_core", "surge_bolt" }) if (aL3.TryGetValue(sid, out var sc3)) profile.TotalCollection.Add(sc3); }
                         completedNodes.Clear();
                         foreach (var cn in campaignNodes) cn.Completed = false;
                         SaveGame(profile, completedNodes);
