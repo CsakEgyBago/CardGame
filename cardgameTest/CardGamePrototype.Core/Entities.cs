@@ -39,12 +39,16 @@ namespace CardGamePrototype.Core
     {
         public CardDefinition SourceCard { get; }
         public int BaseAttack { get; set; }
+        public bool HasAttackedThisTurn { get; set; }
+        public bool IsStunned { get; set; }
+        public int AttackBonus { get; set; }
+        public int Armor { get; set; }
 
-        public SummonedEntity(string name, int maxHp, int position, CardDefinition sourceCard) 
+        public SummonedEntity(string name, int maxHp, int position, CardDefinition sourceCard)
             : base(name, maxHp, position)
         {
             SourceCard = sourceCard;
-            BaseAttack = 2; 
+            BaseAttack = 2;
         }
     }
 }

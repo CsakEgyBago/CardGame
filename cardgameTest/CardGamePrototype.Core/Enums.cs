@@ -27,7 +27,25 @@ namespace CardGamePrototype.Core
         Move,
         ConditionalDamage,
         Composite,
-        HealPlayer
+        HealPlayer,
+        BuffPlayerUnits,
+        DebuffEnemyUnits,
+        StunAllEnemies,
+        SetFieldEffect,
+        SacrificeSelf,
+        DamageAllEnemyMinions,
+        AddArmorAllUnits,
+        DamageMissingHp,
+        GainEnergy
+    }
+
+    public enum FieldEffectType
+    {
+        None,
+        FrozenField,
+        ScorchedEarth,
+        StaticStorm,
+        VoidRift
     }
 
     public enum TargetType

@@ -9,66 +9,48 @@ namespace CardGamePrototype.Core
         public void NewBattle()
         {
             var player = new Player(50, 0);
-
-            var enemy = new Entity("Enemy", 50, 3);
-
-            int seed = 1337;
+            var enemy  = new Entity("Enemy", 50, 2);
+            int seed   = 1337;
 
             State = new BattleState(player, enemy, seed);
 
             var cards = new List<CardDefinition>();
-
             for (int i = 0; i < 4; i++) cards.Add(CardLibrary.Ignite());
             for (int i = 0; i < 4; i++) cards.Add(CardLibrary.Firebolt());
             for (int i = 0; i < 2; i++) cards.Add(CardLibrary.Push());
             for (int i = 0; i < 2; i++) cards.Add(CardLibrary.FrostNova());
             for (int i = 0; i < 2; i++) cards.Add(CardLibrary.BioSpore());
-
             for (int i = cards.Count - 1; i > 0; i--)
             {
                 int j = State.Rng.Next(i + 1);
-
-                var tmp = cards[i];
-                cards[i] = cards[j];
-                cards[j] = tmp;
+                (cards[i], cards[j]) = (cards[j], cards[i]);
             }
-
             State.DrawPile.AddRange(cards);
-
             _turnManager.StartPlayerTurn(State);
         }
 
-        public bool PlaceCard(
-            int handIndex,
-            int slotIndex)
+        public bool PlaceCard(int handIndex, int slotIndex)
         {
-            if (State.Phase != TurnPhase.PlayerTurn)
-                return false;
-
-            var ok =
-                _turnManager.PlaceCard(
-                    State,
-                    handIndex,
-                    slotIndex);
-
+            if (State.Phase != TurnPhase.PlayerTurn) return false;
+            var ok = _turnManager.PlaceCard(State, handIndex, slotIndex);
             CheckBattleEnd();
-
             return ok;
         }
 
-        public bool ExecuteCard(
-            int slotIndex)
+        public bool ExecuteCard(int slotIndex)
         {
-            if (State.Phase != TurnPhase.PlayerTurn)
-                return false;
-
-            var ok =
-                _turnManager.ExecuteCard(
-                    State,
-                    slotIndex);
-
+            if (State.Phase != TurnPhase.PlayerTurn) return false;
+            var ok = _turnManager.ExecuteCard(State, slotIndex);
             CheckBattleEnd();
+            return ok;
+        }
 
+        // Player directs a unit to attack: enemy minion (enemySlotIndex >= 0) or hero (targetHero=true).
+        public bool AttackWithUnit(int playerSlotIndex, int enemySlotIndex, bool targetHero)
+        {
+            if (State.Phase != TurnPhase.PlayerTurn) return false;
+            var ok = _turnManager.AttackWithUnit(State, playerSlotIndex, enemySlotIndex, targetHero);
+            CheckBattleEnd();
             return ok;
         }
 
@@ -90,14 +72,9 @@ namespace CardGamePrototype.Core
         private void CheckBattleEnd()
         {
             if (State.Player.IsDead || State.Enemy.IsDead)
-            {
                 State.Phase = TurnPhase.Finished;
-            }
         }
 
-        public void Restart()
-        {
-            NewBattle();
-        }
+        public void Restart() => NewBattle();
     }
 }

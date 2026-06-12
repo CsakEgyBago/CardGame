@@ -11,6 +11,11 @@ namespace CardGamePrototype.Core
             state.PlacementsThisTurn    = 0;
             state.ExecutionsThisTurn    = 0;
             state.AbilityUnitAttackBuff = 0;
+
+            // Clear attack exhaustion on all player units
+            foreach (var slot in state.PlayerBoard)
+                if (slot.IsOccupied) slot.Occupant!.HasAttackedThisTurn = false;
+
             DrawToHand(state);
             state.Phase = TurnPhase.PlayerTurn;
         }
@@ -18,7 +23,6 @@ namespace CardGamePrototype.Core
         public void DrawToHand(BattleState state)
         {
             int target = HandSize + state.HandSizeBonus;
-            // Scan draw pile; skip cards whose Id is already in hand
             int scan = 0;
             while (state.Hand.Count < target && scan < state.DrawPile.Count)
             {
@@ -33,8 +37,6 @@ namespace CardGamePrototype.Core
             }
         }
 
-        // 2-cycle cooldown: played card sits in recent pile until 2 more are played,
-        // then it returns to the bottom of the draw pile.
         private static void CycleCard(BattleState state, CardDefinition card)
         {
             if (state.RecentPile.Count >= 2)
@@ -53,7 +55,7 @@ namespace CardGamePrototype.Core
             var card = state.Hand[handIndex];
             if (card.Cost > state.Player.Energy) return false;
 
-            // Incantation (spell) cards auto-cast: resolve both catalyst + executioner effects
+            // Incantation (spell) cards auto-cast
             if (card.CardType == CardType.Incantation)
             {
                 state.Player.Energy -= card.Cost;
@@ -78,6 +80,7 @@ namespace CardGamePrototype.Core
             {
                 BaseAttack = card.MinionAttack + state.MinionAttackBonus
             };
+            slot.TurnsOnBoard = 0;
 
             state.Hand.RemoveAt(handIndex);
             CycleCard(state, card);
@@ -88,19 +91,24 @@ namespace CardGamePrototype.Core
             return true;
         }
 
-        // Execute costs 1 energy — unit attacks AND triggers its special effect, stays alive
+        // Execute: unit uses its special ability (ExecutionerEffects) + deals ATK to enemy hero. Costs 1 energy.
+        // This exhausts the unit so it cannot attack this turn.
         public bool ExecuteCard(BattleState state, int slotIndex)
         {
             if (slotIndex < 0 || slotIndex >= state.PlayerBoard.Count) return false;
             var slot = state.PlayerBoard[slotIndex];
             if (!slot.IsOccupied) return false;
             if (state.Player.Energy < 1) return false;
+            if (slot.Occupant!.HasAttackedThisTurn) return false;
+            if (slot.TurnsOnBoard == 0) return false;
 
             state.Player.Energy--;
             state.ExecutionsThisTurn++;
 
             var unit = slot.Occupant!;
-            int atk = unit.BaseAttack + state.AbilityUnitAttackBuff;
+            unit.HasAttackedThisTurn = true;
+
+            int atk = unit.BaseAttack + unit.AttackBonus + state.AbilityUnitAttackBuff;
             state.Enemy.ReceiveDamage(atk);
             state.DamageLog.Add(new DamageEvent("enemy", atk));
             ChargeAbility(state, atk, dealt: true);
@@ -111,22 +119,60 @@ namespace CardGamePrototype.Core
             return true;
         }
 
+        // Player directs a unit to attack an enemy minion or the enemy hero.
+        // Attacking a minion deals reciprocal damage. Attacking the hero has no counterattack.
+        public bool AttackWithUnit(BattleState state, int playerSlotIndex, int enemySlotIndex, bool targetHero)
+        {
+            if (playerSlotIndex < 0 || playerSlotIndex >= state.PlayerBoard.Count) return false;
+            var pSlot = state.PlayerBoard[playerSlotIndex];
+            if (!pSlot.IsOccupied) return false;
+            var attacker = pSlot.Occupant!;
+            if (attacker.HasAttackedThisTurn) return false;
+            if (pSlot.TurnsOnBoard == 0) return false; // summoning sickness
+
+            int atk = attacker.BaseAttack + attacker.AttackBonus + state.AbilityUnitAttackBuff;
+            attacker.HasAttackedThisTurn = true;
+
+            if (targetHero)
+            {
+                state.Enemy.ReceiveDamage(atk);
+                state.DamageLog.Add(new DamageEvent("enemy", atk));
+                ChargeAbility(state, atk, dealt: true);
+            }
+            else
+            {
+                if (enemySlotIndex < 0 || enemySlotIndex >= state.EnemyBoard.Count) return false;
+                var eSlot = state.EnemyBoard[enemySlotIndex];
+                if (!eSlot.IsOccupied) return false;
+                var defender = eSlot.Occupant!;
+
+                // Attacker hits defender (enemy armor reduces damage)
+                int actualAtk = Math.Max(0, atk - defender.Armor);
+                defender.ReceiveDamage(actualAtk);
+                state.DamageLog.Add(new DamageEvent($"enemy_lane_{enemySlotIndex}", actualAtk));
+                ChargeAbility(state, actualAtk, dealt: true);
+
+                // Counter-attack: defender hits attacker back (attacker armor reduces damage)
+                int counterAtk = Math.Max(0, (defender.BaseAttack + defender.AttackBonus) - attacker.Armor);
+                attacker.ReceiveDamage(counterAtk);
+                state.DamageLog.Add(new DamageEvent($"lane_{playerSlotIndex}", -counterAtk));
+                ChargeAbility(state, counterAtk, dealt: false);
+
+                if (defender.IsDead) eSlot.Occupant = null;
+                if (attacker.IsDead) { state.BurnPile.Add(attacker.SourceCard); pSlot.Occupant = null; }
+            }
+
+            return true;
+        }
+
         public void EndPlayerTurn(BattleState state)
         {
+            // Increment turns-on-board (clears summoning sickness)
             foreach (var slot in state.PlayerBoard)
-            {
-                if (!slot.IsOccupied) continue;
-                int atk = slot.Occupant!.BaseAttack + state.AbilityUnitAttackBuff;
-                state.Enemy.ReceiveDamage(atk);
-                state.DamageLog.Add(new DamageEvent($"lane_{slot.Occupant.Position}", atk));
-                ChargeAbility(state, atk, dealt: true);
-                slot.TurnsOnBoard++;
-                if (state.Enemy.IsDead) break;
-            }
+                if (slot.IsOccupied) slot.TurnsOnBoard++;
 
             if (state.Enemy.IsDead) { state.Phase = TurnPhase.Finished; return; }
 
-            // Status effect ticks (Fire burns, Bio poisons, Frost slows next attack)
             TickStatusEffects(state);
             if (state.Enemy.IsDead) { state.Phase = TurnPhase.Finished; return; }
 
@@ -174,47 +220,82 @@ namespace CardGamePrototype.Core
                                            state.EquippedAbility.MaxCharge);
         }
 
-        // What will the enemy do on its next turn? Call before EndPlayerTurn.
-        public static (string Action, int Damage, int Lane) GetEnemyIntent(BattleState state)
+        // Returns a summary of what the enemy plans to do next turn.
+        public static string GetEnemyIntent(BattleState state)
         {
+            int minionCount = state.EnemyBoard.Count(s => s.IsOccupied);
+            int handCount   = state.EnemyHand.Count;
+            int energy = state.EnemyVariant switch {
+                "boss"  => 5 + state.EnemyTurnCount / 3,
+                "elite" => 4 + state.EnemyTurnCount / 4,
+                _       => 3 + state.EnemyTurnCount / 5
+            };
             int frost = state.Enemy.ActiveElements.GetStacks(ElementType.Frost);
-            int pos   = Math.Clamp(state.Enemy.Position, 0, state.PlayerBoard.Count - 1);
-            var slot  = state.PlayerBoard[pos];
+            energy = Math.Max(1, energy - frost);
+            var affordable = state.EnemyHand.Where(c => c.Cost <= energy).ToList();
+            string playPart = affordable.Count > 0
+                ? $"Summon {affordable.First().Name}"
+                : (handCount > 0 ? "Pass (no energy)" : "Draw cards");
+            string atkPart = minionCount > 0 ? $"  +  {minionCount} minion{(minionCount > 1 ? "s" : "")} attack" : "";
+            return $"{playPart}{atkPart}";
+        }
 
-            switch (state.EnemyVariant)
+        private static void ProcessFieldEffect(BattleState state)
+        {
+            switch (state.ActiveField)
             {
-                case "elite":
-                {
-                    int atk = Math.Max(2, (14 + state.EnemyTurnCount) - frost * 2);
-                    if (state.EnemyTurnCount % 2 == 0)
-                        return ($"LUNGE → PLAYER  {atk} dmg", atk, pos);
-                    return slot.IsOccupied
-                        ? ($"STRIKE UNIT  {atk + 3} dmg", atk + 3, pos)
-                        : ($"STRIKE PLAYER  {atk} dmg", atk, pos);
-                }
-                case "boss":
-                {
-                    int atk = Math.Max(2, (17 + state.EnemyTurnCount) - frost * 2);
-                    if (state.Enemy.Hp < state.Enemy.MaxHp * 0.4f) atk = (int)(atk * 1.5f);
-                    if ((state.EnemyTurnCount + 1) % 3 == 0)
-                        return ($"*** AOE ALL LANES  {atk} ***", atk, -1);
-                    return slot.IsOccupied
-                        ? ($"CRUSH UNIT  {atk + 4} dmg", atk + 4, pos)
-                        : ($"CRUSH PLAYER  {atk} dmg", atk, pos);
-                }
-                default:
-                {
-                    int atk = Math.Max(2, (11 + state.EnemyTurnCount) - frost * 2);
-                    return slot.IsOccupied
-                        ? ($"ATTACK UNIT  {atk + 2} dmg", atk + 2, pos)
-                        : ($"ATTACK PLAYER  {atk - 2} dmg", atk - 2, pos);
-                }
+                case FieldEffectType.FrozenField:
+                    // 35% chance to stun each enemy minion
+                    foreach (var s in state.EnemyBoard)
+                        if (s.IsOccupied && state.Rng.NextDouble() < 0.35)
+                            s.Occupant!.IsStunned = true;
+                    break;
+                case FieldEffectType.ScorchedEarth:
+                    // All minions take 2 damage
+                    foreach (var s in state.PlayerBoard)
+                        if (s.IsOccupied)
+                        {
+                            s.Occupant!.ReceiveDamage(2);
+                            if (s.Occupant.IsDead) { state.BurnPile.Add(s.Occupant.SourceCard); s.Occupant = null; }
+                        }
+                    foreach (var s in state.EnemyBoard)
+                        if (s.IsOccupied)
+                        {
+                            s.Occupant!.ReceiveDamage(2);
+                            if (s.Occupant.IsDead) s.Occupant = null;
+                        }
+                    break;
+                case FieldEffectType.StaticStorm:
+                    // All minions gain +1 ATK but take 2 damage
+                    foreach (var s in state.PlayerBoard)
+                        if (s.IsOccupied)
+                        {
+                            s.Occupant!.AttackBonus++;
+                            s.Occupant.ReceiveDamage(2);
+                            if (s.Occupant.IsDead) { state.BurnPile.Add(s.Occupant.SourceCard); s.Occupant = null; }
+                        }
+                    foreach (var s in state.EnemyBoard)
+                        if (s.IsOccupied)
+                        {
+                            s.Occupant!.AttackBonus++;
+                            s.Occupant.ReceiveDamage(2);
+                            if (s.Occupant.IsDead) s.Occupant = null;
+                        }
+                    break;
+                case FieldEffectType.VoidRift:
+                    // 3 damage to all enemy minions
+                    foreach (var s in state.EnemyBoard)
+                        if (s.IsOccupied)
+                        {
+                            s.Occupant!.ReceiveDamage(3);
+                            if (s.Occupant.IsDead) s.Occupant = null;
+                        }
+                    break;
             }
         }
 
         private static void TickStatusEffects(BattleState state)
         {
-            // Fire: 2 dmg per stack, -1 stack
             int fire = state.Enemy.ActiveElements.GetStacks(ElementType.Fire);
             if (fire > 0)
             {
@@ -224,7 +305,6 @@ namespace CardGamePrototype.Core
                 state.Enemy.ActiveElements.Consume(ElementType.Fire, 1);
                 ChargeAbility(state, burnDmg, dealt: true);
             }
-            // Bio: 1 dmg per stack, -1 stack
             int bio = state.Enemy.ActiveElements.GetStacks(ElementType.Bio);
             if (bio > 0)
             {
@@ -234,11 +314,9 @@ namespace CardGamePrototype.Core
                 state.Enemy.ActiveElements.Consume(ElementType.Bio, 1);
                 ChargeAbility(state, poisonDmg, dealt: true);
             }
-            // Frost: reduces attack (handled in GetEnemyIntent + EnemyAct), consume 1 stack
             int frost = state.Enemy.ActiveElements.GetStacks(ElementType.Frost);
             if (frost > 0)
                 state.Enemy.ActiveElements.Consume(ElementType.Frost, 1);
-            // Lightning: burst damage — 3 per stack, all stacks consumed at once
             int lightning = state.Enemy.ActiveElements.GetStacks(ElementType.Lightning);
             if (lightning > 0)
             {
@@ -248,126 +326,124 @@ namespace CardGamePrototype.Core
                 state.Enemy.ActiveElements.Consume(ElementType.Lightning, lightning);
                 ChargeAbility(state, shockDmg, dealt: true);
             }
+
+            // Process active field effect
+            if (state.ActiveField != FieldEffectType.None)
+            {
+                ProcessFieldEffect(state);
+                state.FieldEffectDuration--;
+                if (state.FieldEffectDuration <= 0)
+                    state.ActiveField = FieldEffectType.None;
+            }
         }
 
         private void EnemyAct(BattleState state)
         {
-            int frost = state.Enemy.ActiveElements.GetStacks(ElementType.Frost);
             state.EnemyTurnCount++;
+            int frost = state.Enemy.ActiveElements.GetStacks(ElementType.Frost);
 
-            switch (state.EnemyVariant)
-            {
-                case "elite":
-                    EnemyActElite(state, frost);
-                    break;
-                case "boss":
-                    EnemyActBoss(state, frost);
-                    break;
-                default:
-                    EnemyActStandard(state, Math.Max(2, (11 + state.EnemyTurnCount - 1) - frost * 2));
-                    break;
-            }
-            MoveEnemy(state);
+            // Reset attack exhaustion for all existing enemy minions (not newly played ones)
+            foreach (var slot in state.EnemyBoard)
+                if (slot.IsOccupied) { slot.Occupant!.HasAttackedThisTurn = false; slot.TurnsOnBoard++; }
+
+            int energy = state.EnemyVariant switch {
+                "boss"  => 5 + state.EnemyTurnCount / 3,
+                "elite" => 4 + state.EnemyTurnCount / 4,
+                _       => 3 + state.EnemyTurnCount / 5
+            };
+            energy = Math.Max(1, energy - frost);
+
+            // Draw up to 2 cards (max hand = 5)
+            DrawEnemyCards(state, 2);
+
+            // Play cards from hand (cheapest first, fills empty slots left-to-right)
+            EnemyPlayCards(state, energy);
+
+            // All enemy minions attack
+            EnemyMinionAttack(state, frost);
         }
 
-        private void EnemyActStandard(BattleState state, int attack)
+        private static void DrawEnemyCards(BattleState state, int count)
         {
-            int pos = Math.Clamp(state.Enemy.Position, 0, state.PlayerBoard.Count - 1);
-            var slot = state.PlayerBoard[pos];
-            if (slot.IsOccupied)
+            for (int i = 0; i < count && state.EnemyHand.Count < 5; i++)
             {
-                int dmg = attack + 2;
-                slot.Occupant!.ReceiveDamage(dmg);
-                state.DamageLog.Add(new DamageEvent($"lane_{pos}", -dmg));
-                ChargeAbility(state, dmg, dealt: false);
-                if (slot.Occupant.IsDead) { state.BurnPile.Add(slot.Occupant.SourceCard); slot.Occupant = null; }
-                return;
+                if (state.EnemyDrawPile.Count == 0) break; // deck exhausted
+                state.EnemyHand.Add(state.EnemyDrawPile[0]);
+                state.EnemyDrawPile.RemoveAt(0);
             }
-            int playerDmg = Math.Max(1, attack - 2);
-            state.Player.ReceiveDamage(playerDmg);
-            state.DamageLog.Add(new DamageEvent("player", -playerDmg));
-            ChargeAbility(state, playerDmg, dealt: false);
         }
 
-        private void EnemyActElite(BattleState state, int frost)
+        private static void EnemyPlayCards(BattleState state, int energy)
         {
-            int atk = Math.Max(2, (14 + state.EnemyTurnCount - 1) - frost * 2);
-            int pos = Math.Clamp(state.Enemy.Position, 0, state.PlayerBoard.Count - 1);
-            // Even turns: lunge past units, hit player directly
-            if ((state.EnemyTurnCount - 1) % 2 == 0)
+            bool played = true;
+            while (played && energy > 0 && state.EnemyHand.Count > 0)
             {
-                state.Player.ReceiveDamage(atk);
-                state.DamageLog.Add(new DamageEvent("player", -atk));
-                ChargeAbility(state, atk, dealt: false);
-                return;
-            }
-            var slot = state.PlayerBoard[pos];
-            if (slot.IsOccupied)
-            {
-                int dmg = atk + 3;
-                slot.Occupant!.ReceiveDamage(dmg);
-                state.DamageLog.Add(new DamageEvent($"lane_{pos}", -dmg));
-                ChargeAbility(state, dmg, dealt: false);
-                if (slot.Occupant.IsDead) { state.BurnPile.Add(slot.Occupant.SourceCard); slot.Occupant = null; }
-                return;
-            }
-            state.Player.ReceiveDamage(atk);
-            state.DamageLog.Add(new DamageEvent("player", -atk));
-            ChargeAbility(state, atk, dealt: false);
-        }
-
-        private void EnemyActBoss(BattleState state, int frost)
-        {
-            int atk = Math.Max(2, (17 + state.EnemyTurnCount - 1) - frost * 2);
-            // Phase 2 below 40% HP
-            if (state.Enemy.Hp < state.Enemy.MaxHp * 0.4f) atk = (int)(atk * 1.5f);
-
-            // Every 3rd turn: AOE — damages every occupied unit AND player
-            if (state.EnemyTurnCount % 3 == 0)
-            {
-                for (int li = 0; li < state.PlayerBoard.Count; li++)
+                played = false;
+                // Find cheapest affordable card
+                CardDefinition? toPlay = null;
+                foreach (var c in state.EnemyHand.OrderBy(c => c.Cost))
                 {
-                    var sl = state.PlayerBoard[li];
-                    if (sl.IsOccupied)
-                    {
-                        sl.Occupant!.ReceiveDamage(atk);
-                        state.DamageLog.Add(new DamageEvent($"lane_{li}", -atk));
-                        ChargeAbility(state, atk, dealt: false);
-                        if (sl.Occupant.IsDead) { state.BurnPile.Add(sl.Occupant.SourceCard); sl.Occupant = null; }
-                    }
+                    if (c.Cost <= energy) { toPlay = c; break; }
                 }
-                state.Player.ReceiveDamage(atk);
-                state.DamageLog.Add(new DamageEvent("player", -atk));
-                ChargeAbility(state, atk, dealt: false);
-                return;
-            }
+                if (toPlay == null) break;
 
-            int pos = Math.Clamp(state.Enemy.Position, 0, state.PlayerBoard.Count - 1);
-            var slot = state.PlayerBoard[pos];
-            if (slot.IsOccupied)
-            {
-                int dmg = atk + 4;
-                slot.Occupant!.ReceiveDamage(dmg);
-                state.DamageLog.Add(new DamageEvent($"lane_{pos}", -dmg));
-                ChargeAbility(state, dmg, dealt: false);
-                if (slot.Occupant.IsDead) { state.BurnPile.Add(slot.Occupant.SourceCard); slot.Occupant = null; }
-                return;
+                // Find first empty enemy slot
+                BoardSlot? target = null;
+                foreach (var s in state.EnemyBoard)
+                    if (!s.IsOccupied) { target = s; break; }
+                if (target == null) break; // board full
+
+                target.Occupant = new SummonedEntity(toPlay.Name, toPlay.MinionHp, target.Index, toPlay)
+                {
+                    BaseAttack = toPlay.MinionAttack,
+                    HasAttackedThisTurn = true // summoning sickness: can't attack turn they're played
+                };
+                target.TurnsOnBoard = 0;
+                energy -= toPlay.Cost;
+                state.EnemyHand.Remove(toPlay);
+                played = true;
             }
-            state.Player.ReceiveDamage(atk);
-            state.DamageLog.Add(new DamageEvent("player", -atk));
-            ChargeAbility(state, atk, dealt: false);
         }
 
-        private static void MoveEnemy(BattleState state)
+        private static void EnemyMinionAttack(BattleState state, int frost)
         {
-            if (state.EnemyTurnCount % 2 != 0) return;
-            int target = state.Enemy.Position;
-            for (int i = 0; i < state.PlayerBoard.Count; i++)
-                if (state.PlayerBoard[i].IsOccupied) { target = i; break; }
-            int dir = target > state.Enemy.Position ? 1
-                    : target < state.Enemy.Position ? -1
-                    : (state.Rng.Next(2) == 0 ? 1 : -1);
-            state.Enemy.Position = Math.Clamp(state.Enemy.Position + dir, 0, state.BoardSize - 1);
+            foreach (var eSlot in state.EnemyBoard)
+            {
+                if (!eSlot.IsOccupied || state.Player.IsDead) continue;
+                var minion = eSlot.Occupant!;
+                if (minion.HasAttackedThisTurn) continue; // summoning sickness
+
+                // Stun: skip attack, clear stun
+                if (minion.IsStunned) { minion.IsStunned = false; continue; }
+
+                int atk = Math.Max(1, (minion.BaseAttack + minion.AttackBonus) - frost);
+
+                // Prefer attacking player unit in same lane
+                var pSlot = state.PlayerBoard[eSlot.Index];
+                if (pSlot.IsOccupied)
+                {
+                    var defender = pSlot.Occupant!;
+                    // Defender armor reduces incoming damage
+                    int actualAtk = Math.Max(0, atk - defender.Armor);
+                    defender.ReceiveDamage(actualAtk);
+                    state.DamageLog.Add(new DamageEvent($"lane_{eSlot.Index}", -actualAtk));
+                    ChargeAbility(state, actualAtk, dealt: false);
+
+                    // Counter-attack: player unit hits minion back (minion armor reduces counter)
+                    int counter = Math.Max(0, (defender.BaseAttack + defender.AttackBonus) - minion.Armor);
+                    minion.ReceiveDamage(counter);
+
+                    if (defender.IsDead) { state.BurnPile.Add(defender.SourceCard); pSlot.Occupant = null; }
+                    if (minion.IsDead)   eSlot.Occupant = null;
+                }
+                else
+                {
+                    // Lane open — attack player hero
+                    state.Player.ReceiveDamage(atk);
+                    state.DamageLog.Add(new DamageEvent("player", -atk));
+                    ChargeAbility(state, atk, dealt: false);
+                }
+            }
         }
     }
 }

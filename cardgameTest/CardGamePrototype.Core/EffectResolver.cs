@@ -26,6 +26,44 @@ namespace CardGamePrototype.Core
                     break;
                 case EffectType.Composite:
                     break;
+                case EffectType.BuffPlayerUnits:
+                    foreach (var s in state.PlayerBoard)
+                        if (s.IsOccupied) s.Occupant!.AttackBonus += e.Value;
+                    break;
+                case EffectType.DebuffEnemyUnits:
+                    foreach (var s in state.EnemyBoard)
+                        if (s.IsOccupied) s.Occupant!.BaseAttack = Math.Max(1, s.Occupant.BaseAttack - e.Value);
+                    break;
+                case EffectType.StunAllEnemies:
+                    foreach (var s in state.EnemyBoard)
+                        if (s.IsOccupied) s.Occupant!.IsStunned = true;
+                    break;
+                case EffectType.SetFieldEffect:
+                    state.ActiveField = e.FieldEffect;
+                    state.FieldEffectDuration = e.Duration;
+                    break;
+                case EffectType.SacrificeSelf:
+                    state.Player.ReceiveDamage(e.Value);
+                    break;
+                case EffectType.DamageAllEnemyMinions:
+                    foreach (var s in state.EnemyBoard)
+                        if (s.IsOccupied)
+                        {
+                            s.Occupant!.ReceiveDamage(e.Value);
+                            if (s.Occupant.IsDead) s.Occupant = null;
+                        }
+                    break;
+                case EffectType.AddArmorAllUnits:
+                    foreach (var s in state.PlayerBoard)
+                        if (s.IsOccupied) s.Occupant!.Armor += e.Value;
+                    break;
+                case EffectType.DamageMissingHp:
+                    int missing = state.Player.MaxHp - state.Player.Hp;
+                    state.Enemy.ReceiveDamage(Math.Max(1, missing));
+                    break;
+                case EffectType.GainEnergy:
+                    state.Player.Energy += e.Value;
+                    break;
             }
         }
 

@@ -17,6 +17,8 @@ namespace CardGamePrototype.Core
         public int ConditionStacks { get; set; }
         public int ConsumeStacks { get; set; }
         public bool ConditionTargetAtEdge { get; set; }
+        public int Duration { get; set; }
+        public FieldEffectType FieldEffect { get; set; }
     }
 
     public class CardDefinition

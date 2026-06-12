@@ -16,7 +16,12 @@ namespace CardGamePrototype.Core
         public List<CardDefinition> RecentPile { get; } = new();
 
         public List<BoardSlot> PlayerBoard { get; } = new();
+        public List<BoardSlot> EnemyBoard  { get; } = new();
 
+        public List<CardDefinition> EnemyHand     { get; } = new();
+        public List<CardDefinition> EnemyDrawPile { get; } = new();
+
+        // Index of the player board slot currently selected for attacking
         public int SelectedHandCard  { get; set; } = -1;
         public int SelectedBoardSlot { get; set; } = -1;
 
@@ -41,6 +46,9 @@ namespace CardGamePrototype.Core
         // "standard" | "elite" | "boss"
         public string EnemyVariant { get; set; } = "standard";
 
+        public FieldEffectType ActiveField { get; set; } = FieldEffectType.None;
+        public int FieldEffectDuration { get; set; }
+
         public BattleState(Player player, Entity enemy, int seed)
         {
             Player = player;
@@ -48,7 +56,10 @@ namespace CardGamePrototype.Core
             Seed   = seed;
             Rng    = new Random(seed);
             for (int i = 0; i < 5; i++)
+            {
                 PlayerBoard.Add(new BoardSlot(i));
+                EnemyBoard.Add(new BoardSlot(i));
+            }
         }
     }
 }
