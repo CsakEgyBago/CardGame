@@ -402,16 +402,21 @@ class Program
         // Branching campaign map
         List<CampaignNode> campaignNodes = new List<CampaignNode>
         {
-            new CampaignNode { Id=0, Name="Catalyst Entrance",        Type=NodeType.CombatMinion, EnemyHp=30,  EnemyDefaultPosition=2, MapX=0.06f, MapY=0.50f, ChildIds=new(){1,2,3} },
-            new CampaignNode { Id=1, Name="Upper Flank",               Type=NodeType.CombatMinion, EnemyHp=44,  EnemyDefaultPosition=0, MapX=0.24f, MapY=0.18f, ChildIds=new(){4} },
-            new CampaignNode { Id=2, Name="Core Passage",              Type=NodeType.CombatMinion, EnemyHp=50,  EnemyDefaultPosition=2, MapX=0.24f, MapY=0.50f, ChildIds=new(){4,5} },
-            new CampaignNode { Id=3, Name="Lower Grid",                Type=NodeType.CombatMinion, EnemyHp=44,  EnemyDefaultPosition=4, MapX=0.24f, MapY=0.82f, ChildIds=new(){5} },
-            new CampaignNode { Id=4, Name="Pylon Alpha",               Type=NodeType.CombatMinion, EnemyHp=62,  EnemyDefaultPosition=1, MapX=0.44f, MapY=0.28f, ChildIds=new(){6} },
-            new CampaignNode { Id=5, Name="Recharge Alpha",            Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.44f, MapY=0.72f, ChildIds=new(){6} },
-            new CampaignNode { Id=6, Name="Arch-Executioner Frame",    Type=NodeType.CombatElite,  EnemyHp=80,  EnemyDefaultPosition=3, MapX=0.62f, MapY=0.50f, ChildIds=new(){7,8} },
-            new CampaignNode { Id=7, Name="Deep Core",                 Type=NodeType.CombatMinion, EnemyHp=68,  EnemyDefaultPosition=2, MapX=0.78f, MapY=0.22f, ChildIds=new(){9} },
-            new CampaignNode { Id=8, Name="Recharge Bay",              Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.78f, MapY=0.78f, ChildIds=new(){9} },
-            new CampaignNode { Id=9, Name="The Catalyst Singularity",  Type=NodeType.CombatBoss,   EnemyHp=130, EnemyDefaultPosition=2, MapX=0.93f, MapY=0.50f, ChildIds=new() },
+            new CampaignNode { Id=0,  Name="Catalyst Entrance",        Type=NodeType.CombatMinion, EnemyHp=65,  EnemyDefaultPosition=2, MapX=0.05f, MapY=0.50f, ChildIds=new(){1,2,3} },
+            new CampaignNode { Id=1,  Name="Upper Flank",              Type=NodeType.CombatMinion, EnemyHp=75,  EnemyDefaultPosition=0, MapX=0.18f, MapY=0.14f, ChildIds=new(){4} },
+            new CampaignNode { Id=2,  Name="Core Link",                Type=NodeType.CombatMinion, EnemyHp=80,  EnemyDefaultPosition=2, MapX=0.18f, MapY=0.50f, ChildIds=new(){4,5} },
+            new CampaignNode { Id=3,  Name="Lower Grid",               Type=NodeType.CombatMinion, EnemyHp=75,  EnemyDefaultPosition=4, MapX=0.18f, MapY=0.86f, ChildIds=new(){5} },
+            new CampaignNode { Id=4,  Name="Pylon Cluster",            Type=NodeType.CombatMinion, EnemyHp=95,  EnemyDefaultPosition=1, MapX=0.31f, MapY=0.27f, ChildIds=new(){6} },
+            new CampaignNode { Id=5,  Name="Field Camp",               Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.31f, MapY=0.73f, ChildIds=new(){6,7} },
+            new CampaignNode { Id=6,  Name="First Warden",             Type=NodeType.CombatElite,  EnemyHp=130, EnemyDefaultPosition=3, MapX=0.44f, MapY=0.40f, ChildIds=new(){7,8} },
+            new CampaignNode { Id=7,  Name="Void Corridor",            Type=NodeType.CombatMinion, EnemyHp=102, EnemyDefaultPosition=2, MapX=0.55f, MapY=0.68f, ChildIds=new(){9,10} },
+            new CampaignNode { Id=8,  Name="Relay Station",            Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.55f, MapY=0.20f, ChildIds=new(){9} },
+            new CampaignNode { Id=9,  Name="Deep Pylon",               Type=NodeType.CombatMinion, EnemyHp=112, EnemyDefaultPosition=1, MapX=0.66f, MapY=0.35f, ChildIds=new(){11} },
+            new CampaignNode { Id=10, Name="Bunker",                   Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.66f, MapY=0.78f, ChildIds=new(){11} },
+            new CampaignNode { Id=11, Name="Second Warden",            Type=NodeType.CombatElite,  EnemyHp=165, EnemyDefaultPosition=3, MapX=0.78f, MapY=0.50f, ChildIds=new(){12,13} },
+            new CampaignNode { Id=12, Name="Final Push",               Type=NodeType.CombatMinion, EnemyHp=122, EnemyDefaultPosition=2, MapX=0.87f, MapY=0.20f, ChildIds=new(){14} },
+            new CampaignNode { Id=13, Name="Last Stand",               Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.87f, MapY=0.78f, ChildIds=new(){14} },
+            new CampaignNode { Id=14, Name="The Catalyst Singularity", Type=NodeType.CombatBoss,   EnemyHp=240, EnemyDefaultPosition=2, MapX=0.95f, MapY=0.50f, ChildIds=new() },
         };
         HashSet<int> completedNodes = new();
 
@@ -422,12 +427,10 @@ class Program
         List<CardDefinition> rewardOptions = new();
         Random rewardRng = new();
 
-        List<CardDefinition> shopInventory = new List<CardDefinition>
-        {
-            CardLibrary.Ignite(), CardLibrary.Firebolt(), CardLibrary.CryoShell(),
-            CardLibrary.SporeCloud(), CardLibrary.PhoenixAsh(), CardLibrary.SlagGolem(),
-            CardLibrary.VoltStrike(), CardLibrary.Inferno()
-        };
+        var shopSeedAll = CardLibrary.GetAll().ToList();
+        var shopRng = new Random();
+        for (int si = shopSeedAll.Count - 1; si > 0; si--) { int sj = shopRng.Next(si + 1); (shopSeedAll[si], shopSeedAll[sj]) = (shopSeedAll[sj], shopSeedAll[si]); }
+        List<CardDefinition> shopInventory = shopSeedAll.Take(10).ToList();
         int cardShopCost = 45;
 
         Raylib.InitWindow(1600, 900, "Catalyst Architecture");
@@ -475,6 +478,8 @@ class Program
         // Map notice (e.g. "HEALED +15 HP")
         string mapNotice = "";
         float mapNoticeTimer = 0f;
+
+        float deckScrollY = 0f;
 
         // Pause menu
         bool isPaused = false;
@@ -622,7 +627,7 @@ class Program
                     Raylib.DrawRectangle(0, 0, width, 58, new Color(14, 16, 21, 255));
                     Raylib.DrawLine(0, 58, width, 58, new Color(35, 40, 52, 255));
                     Raylib.DrawText("CAMPAIGN", 28, 16, 22, Color.White);
-                    int mapMaxHp  = 50 + profile.MaxHpBonus;
+                    int mapMaxHp  = 80 + profile.MaxHpBonus;
                     int mapHpDisp = profile.PlayerHp > 0 ? profile.PlayerHp : mapMaxHp;
                     Raylib.DrawText($"HP {mapHpDisp}/{mapMaxHp}", width - 420, 16, 18, new Color(80, 215, 100, 255));
                     Raylib.DrawText($"{profile.Gold} G", width - 215, 16, 20, Color.Gold);
@@ -745,7 +750,7 @@ class Program
                         {
                             if (isRest)
                             {
-                                int restMaxHp = 50 + profile.MaxHpBonus;
+                                int restMaxHp = 80 + profile.MaxHpBonus;
                                 int healAmt   = Math.Max(1, (int)(restMaxHp * 0.30f));
                                 int curHp     = profile.PlayerHp > 0 ? profile.PlayerHp : restMaxHp;
                                 profile.PlayerHp = Math.Min(restMaxHp, curHp + healAmt);
@@ -764,7 +769,7 @@ class Program
                                 battleService.State.Hand.Clear();
                                 battleService.State.BurnPile.Clear();
 
-                                int finalMaxHp = 50 + profile.MaxHpBonus;
+                                int finalMaxHp = 80 + profile.MaxHpBonus;
                                 battleService.State.Player.MaxHp = finalMaxHp;
                                 int startHp = profile.PlayerHp > 0 ? Math.Min(profile.PlayerHp, finalMaxHp) : finalMaxHp;
                                 battleService.State.Player.Hp    = startHp;
@@ -1719,6 +1724,7 @@ class Program
                                 if (DrawButton(new Rectangle(width / 2 - 126, height / 2 + 62, 118, 40), "YES, RESTART", new Color(100, 28, 28, 255), new Color(148, 42, 42, 255)))
                                 {
                                     profile.Gold = 150 + profile.GoldBonus;
+                                    profile.SkillTree.Reset();
                                     profile.SkillPoints = 8;
                                     profile.PlayerHp = 0;
                                     completedNodes.Clear();
@@ -1893,110 +1899,141 @@ class Program
 
                 case GameScene.DeckBuilder:
                 {
-                    // Header
                     Raylib.DrawRectangle(0, 0, width, 58, new Color(14, 16, 21, 255));
                     Raylib.DrawLine(0, 58, width, 58, new Color(35, 40, 52, 255));
                     Raylib.DrawText("DECK BUILDER", 28, 16, 22, Color.White);
                     int dbCnt = profile.ActiveDeck.Count;
-                    Color dbCntCol = dbCnt == 10 ? Color.Gold : (dbCnt > 0 ? Color.Yellow : new Color(130, 135, 155, 255));
-                    int dbCntW = Raylib.MeasureText($"{dbCnt}/10", 22);
-                    Raylib.DrawText($"{dbCnt}/10", width / 2 - dbCntW / 2, 16, 22, dbCntCol);
-                    Raylib.DrawText("Click card = add/remove  •  Max 10  •  1 copy each", width / 2 - 260, 38, 12, new Color(90, 95, 112, 255));
+                    Color dbCntCol = dbCnt == 10 ? Color.Gold : dbCnt > 0 ? Color.Yellow : new Color(130, 135, 155, 255);
+                    int dbCntW = Raylib.MeasureText($"Deck: {dbCnt}/10", 20);
+                    Raylib.DrawText($"Deck: {dbCnt}/10", width / 2 - dbCntW / 2, 18, 20, dbCntCol);
                     if (DrawButton(new Rectangle(width - 220, 9, 200, 40), "< SAVE & EXIT", new Color(38, 72, 42, 255), new Color(55, 108, 62, 255)))
                         scene = GameScene.CampaignMap;
 
-                    // All cards from library (13 unique)
                     var allCards = CardLibrary.GetAll().ToList();
-                    int dbCols = 7;
-                    int dbMargin = 48;
-                    int dbGap = 12;
-                    int dbCW = (width - dbMargin * 2 - dbGap * (dbCols - 1)) / dbCols;
-                    int dbCH = (int)(dbCW * 1.38f);
-                    int dbStartY = 74;
+                    int panelTop = 66;
+                    int splitX = (int)(width * 0.62f);
+                    Raylib.DrawLine(splitX, panelTop, splitX, height, new Color(35, 40, 52, 200));
 
+                    // === LEFT PANEL: scrollable card collection ===
+                    int dbCols = 5, dbMargin = 10, dbGap = 8;
+                    int dbCW = (splitX - dbMargin * 2 - dbGap * (dbCols - 1)) / dbCols;
+                    int dbCH = (int)(dbCW * 1.40f);
+                    int dbGridTop = panelTop + 24;
+                    Raylib.DrawText("COLLECTION — click to add/remove", dbMargin, panelTop + 6, 12, new Color(90, 95, 112, 255));
+
+                    if (Raylib.CheckCollisionPointRec(mouse, new Rectangle(0, panelTop, splitX, height - panelTop)))
+                        deckScrollY -= Raylib.GetMouseWheelMove() * 50f;
+                    int totalRows = (allCards.Count + dbCols - 1) / dbCols;
+                    float dbMaxScroll = Math.Max(0f, totalRows * (dbCH + dbGap) - (height - dbGridTop - 6));
+                    deckScrollY = Math.Clamp(deckScrollY, 0f, dbMaxScroll);
+
+                    Raylib.BeginScissorMode(0, dbGridTop, splitX, height - dbGridTop);
                     for (int i = 0; i < allCards.Count; i++)
                     {
                         int dRow = i / dbCols, dCol = i % dbCols;
                         int dx = dbMargin + dCol * (dbCW + dbGap);
-                        int dy = dbStartY + dRow * (dbCH + 14);
+                        int dy = dbGridTop + dRow * (dbCH + dbGap) - (int)deckScrollY;
                         bool inDeck = profile.ActiveDeck.Any(c => c.Id == allCards[i].Id);
-                        Color dbBody = inDeck ? new Color(22, 38, 28, 255) : new Color(18, 20, 28, 255);
+                        Color dbBody   = inDeck ? new Color(22, 38, 28, 255) : new Color(18, 20, 28, 255);
                         Color dbBorder = inDeck ? new Color(68, 185, 88, 255) : new Color(48, 52, 70, 255);
-                        bool dbHov = Raylib.CheckCollisionPointRec(mouse, new Rectangle(dx, dy, dbCW, dbCH));
+                        bool dbHov = dy > dbGridTop - dbCH && Raylib.CheckCollisionPointRec(mouse, new Rectangle(dx, dy, dbCW, dbCH));
                         if (dbHov && !inDeck) dbBody = new Color(26, 30, 42, 255);
-
                         DrawCard(new Rectangle(dx, dy, dbCW, dbCH), allCards[i].Name, allCards[i].Description, allCards[i].Cost, dbBody, dbBorder, inDeck);
-
-                        // Overlay "IN DECK" badge
+                        // Type label
+                        Color typeCol = allCards[i].CardType switch {
+                            CardType.Incantation => new Color(90, 160, 220, 200),
+                            CardType.Construct   => new Color(80, 200, 120, 200),
+                            CardType.Strike      => new Color(220, 80,  80,  200),
+                            _                    => new Color(150, 150, 150, 200)
+                        };
+                        Raylib.DrawText(allCards[i].CardType.ToString(), dx + 4, dy + dbCH - 14, 9, typeCol);
                         if (inDeck)
                         {
-                            int bdgW = Raylib.MeasureText("IN DECK", 10);
-                            Raylib.DrawRectangle(dx + dbCW - bdgW - 8, dy + 2, bdgW + 6, 16, new Color(55, 155, 72, 210));
-                            Raylib.DrawText("IN DECK", dx + dbCW - bdgW - 5, dy + 4, 10, Color.White);
+                            int bdgW = Raylib.MeasureText("✓", 11);
+                            Raylib.DrawText("✓", dx + dbCW - bdgW - 5, dy + 4, 11, new Color(80, 210, 100, 255));
                         }
                         else if (dbCnt >= 10)
+                            Raylib.DrawRectangleRec(new Rectangle(dx, dy, dbCW, dbCH), new Color(0, 0, 0, 90));
+                        if (dbHov && Raylib.IsMouseButtonPressed(MouseButton.Left))
                         {
-                            // Dim unavailable cards when deck is full
-                            Raylib.DrawRectangleRec(new Rectangle(dx, dy, dbCW, dbCH), new Color(0, 0, 0, 80));
-                        }
-
-                        if (Raylib.IsMouseButtonPressed(MouseButton.Left) && dbHov)
-                        {
-                            if (inDeck)
-                                { profile.ActiveDeck.RemoveAll(c => c.Id == allCards[i].Id); Raylib.PlaySound(ui2Sound); }
-                            else if (dbCnt < 10)
-                                { profile.ActiveDeck.Add(allCards[i]); Raylib.PlaySound(ui2Sound); }
+                            if (inDeck) { profile.ActiveDeck.RemoveAll(c => c.Id == allCards[i].Id); Raylib.PlaySound(ui2Sound); }
+                            else if (dbCnt < 10) { profile.ActiveDeck.Add(allCards[i]); Raylib.PlaySound(ui2Sound); }
                         }
                     }
+                    Raylib.EndScissorMode();
 
-                    // Current deck row (compact, below the card grid)
-                    int deckRowY = dbStartY + ((allCards.Count - 1) / dbCols + 1) * (dbCH + 14) + 12;
-                    Raylib.DrawLine(dbMargin, deckRowY, width - dbMargin, deckRowY, new Color(35, 40, 52, 255));
-                    deckRowY += 8;
-                    Raylib.DrawText("DECK:", dbMargin, deckRowY + 4, 13, new Color(195, 165, 52, 255));
-                    for (int i = 0; i < profile.ActiveDeck.Count; i++)
+                    // Scrollbar track
+                    if (dbMaxScroll > 0)
                     {
-                        int chipX = dbMargin + 55 + i * 130;
-                        int chipY = deckRowY;
-                        if (chipX + 120 > width - dbMargin) break;
-                        bool chipHov = Raylib.CheckCollisionPointRec(mouse, new Rectangle(chipX, chipY, 120, 28));
-                        Raylib.DrawRectangleRounded(new Rectangle(chipX, chipY, 120, 28), 0.3f, 4, chipHov ? new Color(88, 38, 38, 255) : new Color(28, 42, 32, 255));
-                        Raylib.DrawRectangleRoundedLinesEx(new Rectangle(chipX, chipY, 120, 28), 0.3f, 4, 1.2f, chipHov ? new Color(188, 68, 68, 200) : new Color(58, 110, 68, 200));
-                        int chipTW = Raylib.MeasureText(profile.ActiveDeck[i].Name, 11);
-                        Raylib.DrawText(profile.ActiveDeck[i].Name, chipX + 60 - chipTW / 2, chipY + 8, 11, chipHov ? new Color(215, 155, 155, 255) : Color.White);
-                        if (chipHov && Raylib.IsMouseButtonPressed(MouseButton.Left))
-                        {
-                            string rmId = profile.ActiveDeck[i].Id;
-                            profile.ActiveDeck.RemoveAll(c => c.Id == rmId);
-                        }
+                        float sbH = (height - dbGridTop) * ((float)(height - dbGridTop) / (totalRows * (dbCH + dbGap)));
+                        sbH = Math.Max(20f, sbH);
+                        float sbY = dbGridTop + (height - dbGridTop - sbH) * (deckScrollY / dbMaxScroll);
+                        Raylib.DrawRectangle(splitX - 5, dbGridTop, 4, height - dbGridTop, new Color(28, 32, 42, 200));
+                        Raylib.DrawRectangle(splitX - 5, (int)sbY, 4, (int)sbH, new Color(68, 80, 105, 255));
                     }
 
-                    // Ability selection
-                    int abilY = deckRowY + 44;
-                    Raylib.DrawLine(dbMargin, abilY, width - dbMargin, abilY, new Color(35, 40, 52, 255));
-                    abilY += 10;
-                    Raylib.DrawText("ABILITY:", dbMargin, abilY + 8, 14, new Color(80, 185, 235, 255));
+                    // === RIGHT PANEL: deck slots + ability ===
+                    int rpX = splitX + 12, rpW = width - rpX - 10;
+                    Raylib.DrawText("YOUR DECK", rpX, panelTop + 6, 13, new Color(195, 165, 52, 255));
+                    int chipH = 28, chipGap = 5;
+                    int chipStartY = panelTop + 26;
+                    for (int i = 0; i < 10; i++)
+                    {
+                        Rectangle chipR = new Rectangle(rpX, chipStartY + i * (chipH + chipGap), rpW, chipH);
+                        if (i < profile.ActiveDeck.Count)
+                        {
+                            bool chipHov = Raylib.CheckCollisionPointRec(mouse, chipR);
+                            Color chipBody = chipHov ? new Color(80, 30, 30, 255) : new Color(24, 34, 28, 255);
+                            Color chipBord = chipHov ? new Color(180, 60, 60, 200) : new Color(55, 105, 65, 200);
+                            Raylib.DrawRectangleRounded(chipR, 0.2f, 4, chipBody);
+                            Raylib.DrawRectangleRoundedLinesEx(chipR, 0.2f, 4, 1.2f, chipBord);
+                            string chipLabel = profile.ActiveDeck[i].Name;
+                            Color cTypeCol = profile.ActiveDeck[i].CardType switch {
+                                CardType.Incantation => new Color(120, 185, 235, 255),
+                                CardType.Construct   => new Color(100, 210, 140, 255),
+                                CardType.Strike      => new Color(230, 110, 110, 255),
+                                _                    => Color.White
+                            };
+                            int chipTW = Raylib.MeasureText(chipLabel, 11);
+                            Raylib.DrawText(chipLabel, rpX + rpW / 2 - chipTW / 2, chipStartY + i * (chipH + chipGap) + 8, 11, chipHov ? new Color(215, 155, 155, 255) : cTypeCol);
+                            if (chipHov && Raylib.IsMouseButtonPressed(MouseButton.Left))
+                            { string rmChipId = profile.ActiveDeck[i].Id; profile.ActiveDeck.RemoveAll(c => c.Id == rmChipId); Raylib.PlaySound(ui2Sound); }
+                        }
+                        else
+                        {
+                            Raylib.DrawRectangleRounded(chipR, 0.2f, 4, new Color(14, 16, 21, 255));
+                            Raylib.DrawRectangleRoundedLinesEx(chipR, 0.2f, 4, 1f, new Color(26, 30, 40, 255));
+                            int emW = Raylib.MeasureText($"— slot {i + 1} —", 9);
+                            Raylib.DrawText($"— slot {i + 1} —", rpX + rpW / 2 - emW / 2, chipStartY + i * (chipH + chipGap) + 9, 9, new Color(38, 42, 52, 255));
+                        }
+                    }
+                    // Clear all
+                    int clearY = chipStartY + 10 * (chipH + chipGap) + 4;
+                    if (profile.ActiveDeck.Count > 0)
+                    {
+                        if (DrawButton(new Rectangle(rpX, clearY, rpW, 26), "CLEAR ALL", new Color(50, 18, 18, 255), new Color(75, 26, 26, 255)))
+                        { profile.ActiveDeck.Clear(); Raylib.PlaySound(ui2Sound); }
+                    }
+                    // Ability
+                    int abilSep = clearY + 34;
+                    Raylib.DrawLine(rpX, abilSep, rpX + rpW, abilSep, new Color(35, 40, 52, 255));
+                    Raylib.DrawText("ABILITY", rpX, abilSep + 6, 13, new Color(80, 185, 235, 255));
+                    int abilStartY = abilSep + 26;
                     var allAbils = AbilityLibrary.GetAll();
-                    int abilBtnW = (width - dbMargin * 2 - 70 - dbGap * (allAbils.Count - 1)) / allAbils.Count;
+                    int abilH = 52, abilGap2 = 6;
                     for (int i = 0; i < allAbils.Count; i++)
                     {
                         bool aSel = profile.SelectedAbility?.Id == allAbils[i].Id;
-                        int ax = dbMargin + 70 + i * (abilBtnW + dbGap);
-                        Rectangle aR = new Rectangle(ax, abilY, abilBtnW, 60);
-                        Color aBody = aSel ? new Color(22, 44, 62, 255) : new Color(18, 20, 28, 255);
-                        Color aBord = aSel ? new Color(80, 185, 235, 255) : new Color(48, 52, 70, 255);
+                        Rectangle aR = new Rectangle(rpX, abilStartY + i * (abilH + abilGap2), rpW, abilH);
                         bool aHov = Raylib.CheckCollisionPointRec(mouse, aR);
-                        Raylib.DrawRectangleRounded(aR, 0.1f, 6, aHov ? new Color(26, 32, 42, 255) : aBody);
-                        Raylib.DrawRectangleRoundedLinesEx(aR, 0.1f, 6, aSel ? 2.5f : 1.2f, aBord);
-                        Raylib.DrawText(allAbils[i].Name, ax + 8, abilY + 8, 13, aSel ? Color.SkyBlue : Color.White);
-                        Raylib.DrawText(allAbils[i].Description, ax + 8, abilY + 28, 11, new Color(130, 138, 158, 255));
-                        if (aSel)
-                        {
-                            int selW = Raylib.MeasureText("SELECTED", 10);
-                            Raylib.DrawText("SELECTED", ax + abilBtnW - selW - 6, abilY + 6, 10, Color.SkyBlue);
-                        }
-                        if (aHov && Raylib.IsMouseButtonPressed(MouseButton.Left))
-                            profile.SelectedAbility = allAbils[i];
+                        Color aBody = aSel ? new Color(22, 44, 62, 255) : aHov ? new Color(22, 26, 36, 255) : new Color(16, 18, 26, 255);
+                        Color aBord = aSel ? new Color(80, 185, 235, 255) : new Color(40, 46, 60, 255);
+                        Raylib.DrawRectangleRounded(aR, 0.12f, 6, aBody);
+                        Raylib.DrawRectangleRoundedLinesEx(aR, 0.12f, 6, aSel ? 2f : 1f, aBord);
+                        Raylib.DrawText(allAbils[i].Name, rpX + 8, (int)aR.Y + 8, 12, aSel ? Color.SkyBlue : Color.White);
+                        Raylib.DrawText(allAbils[i].Description, rpX + 8, (int)aR.Y + 28, 10, new Color(110, 120, 140, 255));
+                        if (aSel) Raylib.DrawText("SELECTED", (int)(aR.X + rpW - Raylib.MeasureText("SELECTED", 9) - 6), (int)aR.Y + 8, 9, Color.SkyBlue);
+                        if (aHov && Raylib.IsMouseButtonPressed(MouseButton.Left)) profile.SelectedAbility = allAbils[i];
                     }
                     break;
                 }
@@ -2076,6 +2113,7 @@ class Program
                     if (DrawButton(new Rectangle(width / 2 - 150, height / 2 + 14, 300, 52), "START NEW RUN", new Color(28, 62, 28, 255), new Color(42, 98, 42, 255)))
                     {
                         profile.Gold = 150 + profile.GoldBonus;
+                        profile.SkillTree.Reset();
                         profile.SkillPoints = 8;
                         profile.PlayerHp = 0;
                         completedNodes.Clear();

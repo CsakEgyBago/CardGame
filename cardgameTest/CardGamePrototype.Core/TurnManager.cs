@@ -185,7 +185,7 @@ namespace CardGamePrototype.Core
             {
                 case "elite":
                 {
-                    int atk = Math.Max(1, (10 + state.EnemyTurnCount) - frost * 2);
+                    int atk = Math.Max(2, (14 + state.EnemyTurnCount) - frost * 2);
                     if (state.EnemyTurnCount % 2 == 0)
                         return ($"LUNGE → PLAYER  {atk} dmg", atk, pos);
                     return slot.IsOccupied
@@ -194,7 +194,7 @@ namespace CardGamePrototype.Core
                 }
                 case "boss":
                 {
-                    int atk = Math.Max(1, (12 + state.EnemyTurnCount) - frost * 2);
+                    int atk = Math.Max(2, (17 + state.EnemyTurnCount) - frost * 2);
                     if (state.Enemy.Hp < state.Enemy.MaxHp * 0.4f) atk = (int)(atk * 1.5f);
                     if ((state.EnemyTurnCount + 1) % 3 == 0)
                         return ($"*** AOE ALL LANES  {atk} ***", atk, -1);
@@ -204,7 +204,7 @@ namespace CardGamePrototype.Core
                 }
                 default:
                 {
-                    int atk = Math.Max(1, (8 + state.EnemyTurnCount) - frost * 2);
+                    int atk = Math.Max(2, (11 + state.EnemyTurnCount) - frost * 2);
                     return slot.IsOccupied
                         ? ($"ATTACK UNIT  {atk + 2} dmg", atk + 2, pos)
                         : ($"ATTACK PLAYER  {atk - 2} dmg", atk - 2, pos);
@@ -264,7 +264,7 @@ namespace CardGamePrototype.Core
                     EnemyActBoss(state, frost);
                     break;
                 default:
-                    EnemyActStandard(state, Math.Max(1, (8 + state.EnemyTurnCount - 1) - frost * 2));
+                    EnemyActStandard(state, Math.Max(2, (11 + state.EnemyTurnCount - 1) - frost * 2));
                     break;
             }
             MoveEnemy(state);
@@ -291,7 +291,7 @@ namespace CardGamePrototype.Core
 
         private void EnemyActElite(BattleState state, int frost)
         {
-            int atk = Math.Max(1, (10 + state.EnemyTurnCount - 1) - frost * 2);
+            int atk = Math.Max(2, (14 + state.EnemyTurnCount - 1) - frost * 2);
             int pos = Math.Clamp(state.Enemy.Position, 0, state.PlayerBoard.Count - 1);
             // Even turns: lunge past units, hit player directly
             if ((state.EnemyTurnCount - 1) % 2 == 0)
@@ -318,7 +318,7 @@ namespace CardGamePrototype.Core
 
         private void EnemyActBoss(BattleState state, int frost)
         {
-            int atk = Math.Max(1, (12 + state.EnemyTurnCount - 1) - frost * 2);
+            int atk = Math.Max(2, (17 + state.EnemyTurnCount - 1) - frost * 2);
             // Phase 2 below 40% HP
             if (state.Enemy.Hp < state.Enemy.MaxHp * 0.4f) atk = (int)(atk * 1.5f);
 

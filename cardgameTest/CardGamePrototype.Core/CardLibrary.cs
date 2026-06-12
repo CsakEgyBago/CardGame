@@ -25,6 +25,13 @@ namespace CardGamePrototype.Core
             yield return ArcLancer();
             yield return NullBlade();
             yield return BoneSpear();
+            yield return EmberCore();
+            yield return FrostLance();
+            yield return BioBomb();
+            yield return SurgeBolt();
+            yield return StaticField();
+            yield return PlasmaCutter();
+            yield return NullTrap();
         }
 
         public static CardDefinition Ignite()
@@ -312,12 +319,12 @@ namespace CardGamePrototype.Core
             var c = new CardDefinition
             {
                 Id = "void_drain", Name = "Void Drain",
-                Description = "Drain enemy vitality.\nHeal yourself 10 HP.",
+                Description = "Drain enemy vitality.\nHeal yourself 8 HP.",
                 Cost = 1, CardType = CardType.Incantation,
                 ResolutionRole = CardResolutionRole.Catalyst,
                 MinionHp = 8, MinionAttack = 1
             };
-            c.CatalystEffects.Add(new EffectDefinition { Type = EffectType.HealPlayer, Value = 10, Target = TargetType.Self });
+            c.CatalystEffects.Add(new EffectDefinition { Type = EffectType.HealPlayer, Value = 8, Target = TargetType.Self });
             return c;
         }
 
@@ -401,12 +408,12 @@ namespace CardGamePrototype.Core
             var c = new CardDefinition
             {
                 Id = "null_blade", Name = "Null Blade",
-                Description = "Edge fighter.\nSpecial: 12 dmg at edge.",
+                Description = "Edge fighter.\nSpecial: 9 dmg at edge.",
                 Cost = 1, CardType = CardType.Strike,
                 ResolutionRole = CardResolutionRole.Both,
                 MinionHp = 8, MinionAttack = 3
             };
-            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.ConditionalDamage, Value = 12, Target = TargetType.Enemy, ConditionTargetAtEdge = true });
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.ConditionalDamage, Value = 9, Target = TargetType.Enemy, ConditionTargetAtEdge = true });
             return c;
         }
 
@@ -415,12 +422,115 @@ namespace CardGamePrototype.Core
             var c = new CardDefinition
             {
                 Id = "bone_spear", Name = "Bone Spear",
-                Description = "Bone-tipped assault.\nSpecial: pierces for 10 dmg.",
+                Description = "Bone-tipped assault.\nSpecial: pierces for 8 dmg.",
                 Cost = 1, CardType = CardType.Strike,
                 ResolutionRole = CardResolutionRole.Both,
-                MinionHp = 6, MinionAttack = 4
+                MinionHp = 6, MinionAttack = 3
+            };
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 8, Target = TargetType.Enemy });
+            return c;
+        }
+
+        // ── Expansion set ────────────────────────────────────────────────
+
+        public static CardDefinition EmberCore()
+        {
+            var c = new CardDefinition
+            {
+                Id = "ember_core", Name = "Ember Core",
+                Description = "Ignites on arrival. Applies\n1 Fire. Special: 5 dmg if Fire.",
+                Cost = 1, CardType = CardType.Construct,
+                ResolutionRole = CardResolutionRole.Both,
+                MinionHp = 14, MinionAttack = 3
+            };
+            c.CatalystEffects.Add(new EffectDefinition { Type = EffectType.ApplyElement, Element = ElementType.Fire, Value = 1, Target = TargetType.Enemy });
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.ConditionalDamage, Value = 5, Target = TargetType.Enemy, ConditionElement = ElementType.Fire, ConditionStacks = 1 });
+            return c;
+        }
+
+        public static CardDefinition FrostLance()
+        {
+            var c = new CardDefinition
+            {
+                Id = "frost_lance", Name = "Frost Lance",
+                Description = "Ice-tipped strike.\nSpecial: apply 3 Frost.",
+                Cost = 2, CardType = CardType.Strike,
+                ResolutionRole = CardResolutionRole.Both,
+                MinionHp = 10, MinionAttack = 4
+            };
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.ApplyElement, Element = ElementType.Frost, Value = 3, Target = TargetType.Enemy });
+            return c;
+        }
+
+        public static CardDefinition BioBomb()
+        {
+            var c = new CardDefinition
+            {
+                Id = "bio_bomb", Name = "Bio Bomb",
+                Description = "Apply 4 Bio. Explodes for\n12 dmg if Bio present.",
+                Cost = 2, CardType = CardType.Incantation,
+                ResolutionRole = CardResolutionRole.Both,
+                MinionHp = 7, MinionAttack = 2
+            };
+            c.CatalystEffects.Add(new EffectDefinition { Type = EffectType.ApplyElement, Element = ElementType.Bio, Value = 4, Target = TargetType.Enemy });
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.ConditionalDamage, Value = 12, Target = TargetType.Enemy, ConditionElement = ElementType.Bio, ConditionStacks = 1, ConsumeStacks = 1 });
+            return c;
+        }
+
+        public static CardDefinition SurgeBolt()
+        {
+            var c = new CardDefinition
+            {
+                Id = "surge_bolt", Name = "Surge Bolt",
+                Description = "Raw kinetic discharge.\nDeals 8 flat damage.",
+                Cost = 1, CardType = CardType.Incantation,
+                ResolutionRole = CardResolutionRole.Catalyst,
+                MinionHp = 6, MinionAttack = 2
+            };
+            c.CatalystEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 8, Target = TargetType.Enemy });
+            return c;
+        }
+
+        public static CardDefinition StaticField()
+        {
+            var c = new CardDefinition
+            {
+                Id = "static_field", Name = "Static Field",
+                Description = "Electrify the field. Apply\n2 Lightning + 5 flat dmg.",
+                Cost = 2, CardType = CardType.Incantation,
+                ResolutionRole = CardResolutionRole.Both,
+                MinionHp = 7, MinionAttack = 2
+            };
+            c.CatalystEffects.Add(new EffectDefinition { Type = EffectType.ApplyElement, Element = ElementType.Lightning, Value = 2, Target = TargetType.Enemy });
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 5, Target = TargetType.Enemy });
+            return c;
+        }
+
+        public static CardDefinition PlasmaCutter()
+        {
+            var c = new CardDefinition
+            {
+                Id = "plasma_cutter", Name = "Plasma Cutter",
+                Description = "Superheated edge.\nSpecial: 10 raw damage.",
+                Cost = 2, CardType = CardType.Strike,
+                ResolutionRole = CardResolutionRole.Both,
+                MinionHp = 10, MinionAttack = 6
             };
             c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 10, Target = TargetType.Enemy });
+            return c;
+        }
+
+        public static CardDefinition NullTrap()
+        {
+            var c = new CardDefinition
+            {
+                Id = "null_trap", Name = "Null Trap",
+                Description = "Void shield. Absorbs all.\nSpecial: restores 12 HP.",
+                Cost = 3, CardType = CardType.Construct,
+                ResolutionRole = CardResolutionRole.Both,
+                MinionHp = 30, MinionAttack = 1
+            };
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.HealPlayer, Value = 12, Target = TargetType.Self });
             return c;
         }
     }

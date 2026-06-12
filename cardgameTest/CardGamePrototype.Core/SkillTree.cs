@@ -94,5 +94,11 @@ namespace CardGamePrototype.Core
                 node.IsUnlocked = true;
             }
         }
+
+        public void Reset()
+        {
+            foreach (var node in Nodes)
+                if (node.Id != 0) node.IsUnlocked = false;
+        }
     }
 }
