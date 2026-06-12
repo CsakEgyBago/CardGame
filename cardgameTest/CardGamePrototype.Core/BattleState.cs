@@ -36,6 +36,9 @@ namespace CardGamePrototype.Core
         // Damage events produced this frame; client reads then clears.
         public List<DamageEvent> DamageLog { get; } = new();
 
+        // "standard" | "elite" | "boss"
+        public string EnemyVariant { get; set; } = "standard";
+
         public BattleState(Player player, Entity enemy, int seed)
         {
             Player = player;

@@ -58,3 +58,7 @@ D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\
 D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\hit_2.mp3
 D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\hit_3.mp3
 D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\hit_4.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\win_1.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\lose_1.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\ui_1.mp3
+D:\mcm\CardGame\cardgameTest\CardGamePrototype.Client\bin\Debug\net10.0\Sources\ui_2.mp3

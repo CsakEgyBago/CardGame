@@ -165,15 +165,39 @@ namespace CardGamePrototype.Core
         // What will the enemy do on its next turn? Call before EndPlayerTurn.
         public static (string Action, int Damage, int Lane) GetEnemyIntent(BattleState state)
         {
-            int attack = 8 + state.EnemyTurnCount;
-            // Frost reduces attack
             int frost = state.Enemy.ActiveElements.GetStacks(ElementType.Frost);
-            attack = Math.Max(1, attack - frost * 2);
-            int pos = Math.Clamp(state.Enemy.Position, 0, state.PlayerBoard.Count - 1);
-            var slot = state.PlayerBoard[pos];
-            return slot.IsOccupied
-                ? ($"ATTACK UNIT  {attack + 2} dmg", attack + 2, pos)
-                : ($"ATTACK PLAYER  {attack - 2} dmg", attack - 2, pos);
+            int pos   = Math.Clamp(state.Enemy.Position, 0, state.PlayerBoard.Count - 1);
+            var slot  = state.PlayerBoard[pos];
+
+            switch (state.EnemyVariant)
+            {
+                case "elite":
+                {
+                    int atk = Math.Max(1, (10 + state.EnemyTurnCount) - frost * 2);
+                    if (state.EnemyTurnCount % 2 == 0)
+                        return ($"LUNGE → PLAYER  {atk} dmg", atk, pos);
+                    return slot.IsOccupied
+                        ? ($"STRIKE UNIT  {atk + 3} dmg", atk + 3, pos)
+                        : ($"STRIKE PLAYER  {atk} dmg", atk, pos);
+                }
+                case "boss":
+                {
+                    int atk = Math.Max(1, (12 + state.EnemyTurnCount) - frost * 2);
+                    if (state.Enemy.Hp < state.Enemy.MaxHp * 0.4f) atk = (int)(atk * 1.5f);
+                    if ((state.EnemyTurnCount + 1) % 3 == 0)
+                        return ($"*** AOE ALL LANES  {atk} ***", atk, -1);
+                    return slot.IsOccupied
+                        ? ($"CRUSH UNIT  {atk + 4} dmg", atk + 4, pos)
+                        : ($"CRUSH PLAYER  {atk} dmg", atk, pos);
+                }
+                default:
+                {
+                    int atk = Math.Max(1, (8 + state.EnemyTurnCount) - frost * 2);
+                    return slot.IsOccupied
+                        ? ($"ATTACK UNIT  {atk + 2} dmg", atk + 2, pos)
+                        : ($"ATTACK PLAYER  {atk - 2} dmg", atk - 2, pos);
+                }
+            }
         }
 
         private static void TickStatusEffects(BattleState state)
@@ -206,32 +230,110 @@ namespace CardGamePrototype.Core
 
         private void EnemyAct(BattleState state)
         {
-            int attack = 8 + state.EnemyTurnCount;
-            // Frost slow: already ticked down in TickStatusEffects, but we read remaining stacks
-            int frostRemaining = state.Enemy.ActiveElements.GetStacks(ElementType.Frost);
-            attack = Math.Max(1, attack - frostRemaining * 2);
+            int frost = state.Enemy.ActiveElements.GetStacks(ElementType.Frost);
             state.EnemyTurnCount++;
 
-            if (state.Enemy.Position >= 0 && state.Enemy.Position < state.PlayerBoard.Count)
+            switch (state.EnemyVariant)
             {
-                var slot = state.PlayerBoard[state.Enemy.Position];
-                if (slot.IsOccupied)
-                {
-                    int dmg = attack + 2;
-                    slot.Occupant!.ReceiveDamage(dmg);
-                    state.DamageLog.Add(new DamageEvent($"lane_{state.Enemy.Position}", -dmg));
-                    ChargeAbility(state, dmg, dealt: false);
-                    if (slot.Occupant.IsDead) slot.Occupant = null;
-                    MoveEnemy(state);
-                    return;
-                }
+                case "elite":
+                    EnemyActElite(state, frost);
+                    break;
+                case "boss":
+                    EnemyActBoss(state, frost);
+                    break;
+                default:
+                    EnemyActStandard(state, Math.Max(1, (8 + state.EnemyTurnCount - 1) - frost * 2));
+                    break;
             }
+            MoveEnemy(state);
+        }
 
-            int playerDmg = attack - 2;
+        private void EnemyActStandard(BattleState state, int attack)
+        {
+            int pos = Math.Clamp(state.Enemy.Position, 0, state.PlayerBoard.Count - 1);
+            var slot = state.PlayerBoard[pos];
+            if (slot.IsOccupied)
+            {
+                int dmg = attack + 2;
+                slot.Occupant!.ReceiveDamage(dmg);
+                state.DamageLog.Add(new DamageEvent($"lane_{pos}", -dmg));
+                ChargeAbility(state, dmg, dealt: false);
+                if (slot.Occupant.IsDead) slot.Occupant = null;
+                return;
+            }
+            int playerDmg = Math.Max(1, attack - 2);
             state.Player.ReceiveDamage(playerDmg);
             state.DamageLog.Add(new DamageEvent("player", -playerDmg));
             ChargeAbility(state, playerDmg, dealt: false);
-            MoveEnemy(state);
+        }
+
+        private void EnemyActElite(BattleState state, int frost)
+        {
+            int atk = Math.Max(1, (10 + state.EnemyTurnCount - 1) - frost * 2);
+            int pos = Math.Clamp(state.Enemy.Position, 0, state.PlayerBoard.Count - 1);
+            // Even turns: lunge past units, hit player directly
+            if ((state.EnemyTurnCount - 1) % 2 == 0)
+            {
+                state.Player.ReceiveDamage(atk);
+                state.DamageLog.Add(new DamageEvent("player", -atk));
+                ChargeAbility(state, atk, dealt: false);
+                return;
+            }
+            var slot = state.PlayerBoard[pos];
+            if (slot.IsOccupied)
+            {
+                int dmg = atk + 3;
+                slot.Occupant!.ReceiveDamage(dmg);
+                state.DamageLog.Add(new DamageEvent($"lane_{pos}", -dmg));
+                ChargeAbility(state, dmg, dealt: false);
+                if (slot.Occupant.IsDead) slot.Occupant = null;
+                return;
+            }
+            state.Player.ReceiveDamage(atk);
+            state.DamageLog.Add(new DamageEvent("player", -atk));
+            ChargeAbility(state, atk, dealt: false);
+        }
+
+        private void EnemyActBoss(BattleState state, int frost)
+        {
+            int atk = Math.Max(1, (12 + state.EnemyTurnCount - 1) - frost * 2);
+            // Phase 2 below 40% HP
+            if (state.Enemy.Hp < state.Enemy.MaxHp * 0.4f) atk = (int)(atk * 1.5f);
+
+            // Every 3rd turn: AOE — damages every occupied unit AND player
+            if (state.EnemyTurnCount % 3 == 0)
+            {
+                for (int li = 0; li < state.PlayerBoard.Count; li++)
+                {
+                    var sl = state.PlayerBoard[li];
+                    if (sl.IsOccupied)
+                    {
+                        sl.Occupant!.ReceiveDamage(atk);
+                        state.DamageLog.Add(new DamageEvent($"lane_{li}", -atk));
+                        ChargeAbility(state, atk, dealt: false);
+                        if (sl.Occupant.IsDead) sl.Occupant = null;
+                    }
+                }
+                state.Player.ReceiveDamage(atk);
+                state.DamageLog.Add(new DamageEvent("player", -atk));
+                ChargeAbility(state, atk, dealt: false);
+                return;
+            }
+
+            int pos = Math.Clamp(state.Enemy.Position, 0, state.PlayerBoard.Count - 1);
+            var slot = state.PlayerBoard[pos];
+            if (slot.IsOccupied)
+            {
+                int dmg = atk + 4;
+                slot.Occupant!.ReceiveDamage(dmg);
+                state.DamageLog.Add(new DamageEvent($"lane_{pos}", -dmg));
+                ChargeAbility(state, dmg, dealt: false);
+                if (slot.Occupant.IsDead) slot.Occupant = null;
+                return;
+            }
+            state.Player.ReceiveDamage(atk);
+            state.DamageLog.Add(new DamageEvent("player", -atk));
+            ChargeAbility(state, atk, dealt: false);
         }
 
         private static void MoveEnemy(BattleState state)

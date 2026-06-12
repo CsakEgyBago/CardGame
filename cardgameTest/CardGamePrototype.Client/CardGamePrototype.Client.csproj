@@ -26,5 +26,9 @@
     <Content Include="..\Sources\hit_2.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\hit_2.mp3</TargetPath></Content>
     <Content Include="..\Sources\hit_3.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\hit_3.mp3</TargetPath></Content>
     <Content Include="..\Sources\hit_4.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\hit_4.mp3</TargetPath></Content>
+    <Content Include="..\Sources\win_1.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\win_1.mp3</TargetPath></Content>
+    <Content Include="..\Sources\lose_1.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\lose_1.mp3</TargetPath></Content>
+    <Content Include="..\Sources\ui_1.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\ui_1.mp3</TargetPath></Content>
+    <Content Include="..\Sources\ui_2.mp3"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><TargetPath>Sources\ui_2.mp3</TargetPath></Content>
   </ItemGroup>
 </Project>
