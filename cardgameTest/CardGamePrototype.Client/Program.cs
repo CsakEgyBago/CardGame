@@ -464,13 +464,16 @@ class Program
 
         // Pause menu
         bool isPaused = false;
+        bool showBurnPile = false;
+        bool confirmRestart = false;
         float masterVolume = 1.0f;
         Raylib.SetMasterVolume(masterVolume);
 
         // Load saved run if one exists
         LoadGame(profile, completedNodes, campaignNodes);
 
-        while (!Raylib.WindowShouldClose())
+        bool exitGame = false;
+        while (!Raylib.WindowShouldClose() && !exitGame)
         {
             int width = Raylib.GetScreenWidth();
             int height = Raylib.GetScreenHeight();
@@ -483,9 +486,27 @@ class Program
             if (Raylib.IsKeyPressed(KeyboardKey.F5))
                 theme = theme == GameTheme.SciFi ? GameTheme.Fantasy : GameTheme.SciFi;
 
-            // ESC: toggle pause (only in battle)
-            if (Raylib.IsKeyPressed(KeyboardKey.Escape) && scene == GameScene.BattleView)
-                isPaused = !isPaused;
+            // P: toggle pause in battle
+            if (Raylib.IsKeyPressed(KeyboardKey.P) && scene == GameScene.BattleView)
+            {
+                if (showBurnPile) showBurnPile = false;
+                else isPaused = !isPaused;
+            }
+
+            // ESC: navigate back / close game
+            if (Raylib.IsKeyPressed(KeyboardKey.Escape))
+            {
+                if (scene == GameScene.TitleScreen)
+                    exitGame = true;
+                else if (scene == GameScene.ModeSelect)
+                    scene = GameScene.TitleScreen;
+                else if (scene == GameScene.DeckBuilder || scene == GameScene.MarketShop)
+                    scene = GameScene.CampaignMap;
+                else if (scene == GameScene.BattleView)
+                {
+                    if (showBurnPile) showBurnPile = false;
+                }
+            }
 
             // Shake decay
             if (shakeTimer > 0)
@@ -690,6 +711,8 @@ class Program
                             };
                             battleEndSoundPlayed = false;
                             prevAbilityCharge    = 0f;
+                            showBurnPile   = false;
+                            confirmRestart = false;
                             floatDmgs.Clear();
                             Array.Clear(slotFlashTimers, 0, 5);
                             Array.Clear(prevSlotOccupied, 0, 5);
@@ -764,6 +787,8 @@ class Program
                         }
                         if (Raylib.IsKeyPressed(KeyboardKey.Space) && bs.SelectedBoardSlot >= 0)
                             battleService.ExecuteCard(bs.SelectedBoardSlot);
+                        if (Raylib.IsKeyPressed(KeyboardKey.Q))
+                            if (battleService.ActivateAbility()) Raylib.PlaySound(whoosh7);
                     }
 
                     if (theme == GameTheme.SciFi)
@@ -798,7 +823,10 @@ class Program
                         Raylib.DrawText($"HP {bs.Player.Hp}/{bs.Player.MaxHp}", 10, 22, 13, px8Grn);
                         DrawBar(10, 38, SW - 22, 5, (float)bs.Player.Hp / Math.Max(bs.Player.MaxHp, 1), px8Grn, new Color(0, 18, 0, 255));
                         Raylib.DrawText($"NRG {bs.Player.Energy}", 10, 48, 12, px8Cyn);
-                        Raylib.DrawText($"DIS {bs.BurnPile.Count}", 110, 48, 12, px8Yel);
+                        bool disHovSF = Raylib.CheckCollisionPointRec(mouse, new Rectangle(107, 42, 80, 18));
+                        Raylib.DrawText($"DIS {bs.BurnPile.Count}", 110, 48, 12, disHovSF ? Color.White : px8Yel);
+                        if (!isPaused && disHovSF && Raylib.IsMouseButtonPressed(MouseButton.Left))
+                            { showBurnPile = !showBurnPile; dragging = false; draggingIndex = -1; }
                         Raylib.DrawLine(0, 64, SW, 64, px8GrnD);
 
                         for (int i = 0; i < bs.Hand.Count; i++)
@@ -814,7 +842,7 @@ class Program
                             Raylib.DrawLine((int)cr.X, (int)cr.Y + 20, (int)(cr.X + cr.Width), (int)cr.Y + 20, px8GrnD);
                             Raylib.DrawText(hc.Description, (int)cr.X + 5, (int)cr.Y + 24, 9, px8Gry);
                             Raylib.DrawText($"[{hc.Cost}]", (int)(cr.X + cr.Width - 22), (int)cr.Y + 5, 11, px8Cyn);
-                            if (!isPaused && Raylib.IsMouseButtonPressed(MouseButton.Left) && Raylib.CheckCollisionPointRec(mouse, cr) && !dragging)
+                            if (!isPaused && !showBurnPile && Raylib.IsMouseButtonPressed(MouseButton.Left) && Raylib.CheckCollisionPointRec(mouse, cr) && !dragging)
                             {
                                 dragging = true; draggingIndex = i; isDraggingFromCollectionPool = false;
                                 dragOffset = mouse - new Vector2(cr.X, cr.Y);
@@ -1096,7 +1124,10 @@ class Program
                         int fpHpFW = Raylib.MeasureText($"{bs.Player.Hp}/{bs.Player.MaxHp}", 11);
                         Raylib.DrawText($"{bs.Player.Hp}/{bs.Player.MaxHp}", 12 + 90 - fpHpFW / 2, 23, 11, fpText);
                         Raylib.DrawText($"NRG {bs.Player.Energy}", 200, 8, 12, new Color(80, 185, 235, 255));
-                        Raylib.DrawText($"DIS {bs.BurnPile.Count}", 200, 26, 11, new Color(205, 140, 48, 255));
+                        bool disHovFP = Raylib.CheckCollisionPointRec(mouse, new Rectangle(197, 22, 80, 16));
+                        Raylib.DrawText($"DIS {bs.BurnPile.Count}", 200, 26, 11, disHovFP ? Color.White : new Color(205, 140, 48, 255));
+                        if (!isPaused && disHovFP && Raylib.IsMouseButtonPressed(MouseButton.Left))
+                            { showBurnPile = !showBurnPile; dragging = false; draggingIndex = -1; }
                         bool isPlayerTurnFP = bs.Phase == TurnPhase.PlayerTurn;
                         string phaseLblFP = isPlayerTurnFP ? "YOUR TURN" : "ENEMY TURN";
                         Color phaseColFP = isPlayerTurnFP ? new Color(88, 200, 110, 255) : new Color(210, 80, 68, 255);
@@ -1455,16 +1486,21 @@ class Program
                         Raylib.DrawRectangle(0, 0, width, height, new Color(8, 9, 13, 215));
                         if (bs.Enemy.IsDead)
                         {
-                            Raylib.DrawRectangle(width / 2 - 220, height / 2 - 80, 440, 170, new Color(18, 22, 16, 240));
-                            Raylib.DrawRectangleLinesEx(new Rectangle(width / 2 - 220, height / 2 - 80, 440, 170), 1.5f, new Color(72, 185, 88, 160));
+                            int goldReward = activeBattleNode?.Type switch { NodeType.CombatElite => 80, NodeType.CombatBoss => 120, _ => 60 };
+                            Raylib.DrawRectangle(width / 2 - 220, height / 2 - 80, 440, 205, new Color(18, 22, 16, 240));
+                            Raylib.DrawRectangleLinesEx(new Rectangle(width / 2 - 220, height / 2 - 80, 440, 205), 1.5f, new Color(72, 185, 88, 160));
                             int vcw = Raylib.MeasureText("VICTORY", 56);
                             Raylib.DrawText("VICTORY", width / 2 - vcw / 2, height / 2 - 72, 56, Color.Gold);
                             Raylib.DrawLineEx(new Vector2(width / 2 - 180f, height / 2 - 8f), new Vector2(width / 2 + 180f, height / 2 - 8f), 1f, new Color(68, 155, 78, 160));
-                            int r1w2 = Raylib.MeasureText("+60 Credits  —  choose a card reward", 15);
-                            Raylib.DrawText("+60 Credits  —  choose a card reward", width / 2 - r1w2 / 2, height / 2 + 4, 15, new Color(200, 185, 80, 255));
-                            if (DrawButton(new Rectangle(width / 2 - 130, height / 2 + 40, 260, 44), "CHOOSE REWARD →", new Color(38, 72, 42, 255), new Color(55, 108, 62, 255)))
+                            string goldLine = $"+{goldReward} Credits  —  choose a card reward";
+                            int r1w2 = Raylib.MeasureText(goldLine, 15);
+                            Raylib.DrawText(goldLine, width / 2 - r1w2 / 2, height / 2 + 4, 15, new Color(200, 185, 80, 255));
+                            string winStats = $"Turns: {bs.EnemyTurnCount}   Cards played: {bs.CardsPlayedTotal}   HP left: {bs.Player.Hp}/{bs.Player.MaxHp}";
+                            int winStatsW = Raylib.MeasureText(winStats, 12);
+                            Raylib.DrawText(winStats, width / 2 - winStatsW / 2, height / 2 + 26, 12, new Color(120, 148, 120, 255));
+                            if (DrawButton(new Rectangle(width / 2 - 130, height / 2 + 52, 260, 44), "CHOOSE REWARD →", new Color(38, 72, 42, 255), new Color(55, 108, 62, 255)))
                             {
-                                profile.Gold += 60;
+                                profile.Gold += goldReward;
                                 if (activeBattleNode != null)
                                 {
                                     activeBattleNode.Completed = true;
@@ -1483,19 +1519,35 @@ class Program
                         }
                         else
                         {
-                            Raylib.DrawRectangle(width / 2 - 270, height / 2 - 80, 540, 190, new Color(22, 14, 14, 240));
-                            Raylib.DrawRectangleLinesEx(new Rectangle(width / 2 - 270, height / 2 - 80, 540, 190), 1.5f, new Color(185, 52, 52, 160));
+                            Raylib.DrawRectangle(width / 2 - 270, height / 2 - 80, 540, 245, new Color(22, 14, 14, 240));
+                            Raylib.DrawRectangleLinesEx(new Rectangle(width / 2 - 270, height / 2 - 80, 540, 245), 1.5f, new Color(185, 52, 52, 160));
                             int dfw = Raylib.MeasureText("DEFEAT", 56);
                             Raylib.DrawText("DEFEAT", width / 2 - dfw / 2, height / 2 - 68, 56, new Color(215, 60, 60, 255));
                             Raylib.DrawLineEx(new Vector2(width / 2 - 180f, height / 2 - 4f), new Vector2(width / 2 + 180f, height / 2 - 4f), 1f, new Color(155, 48, 48, 160));
-                            if (DrawButton(new Rectangle(width / 2 - 115, height / 2 + 22, 230, 44), "RESTART RUN", new Color(88, 28, 28, 255), new Color(128, 42, 42, 255)))
+                            string loseStats = $"Turns: {bs.EnemyTurnCount}   Cards played: {bs.CardsPlayedTotal}   Dmg dealt: {bs.Enemy.MaxHp - bs.Enemy.Hp}";
+                            int loseStatsW = Raylib.MeasureText(loseStats, 12);
+                            Raylib.DrawText(loseStats, width / 2 - loseStatsW / 2, height / 2 + 12, 12, new Color(148, 115, 115, 255));
+                            if (!confirmRestart)
                             {
-                                profile.Gold = 150;
-                                profile.SkillPoints = 8;
-                                completedNodes.Clear();
-                                foreach (var cn in campaignNodes) cn.Completed = false;
-                                SaveGame(profile, completedNodes);
-                                scene = GameScene.TitleScreen;
+                                if (DrawButton(new Rectangle(width / 2 - 115, height / 2 + 36, 230, 44), "RESTART RUN", new Color(88, 28, 28, 255), new Color(128, 42, 42, 255)))
+                                    confirmRestart = true;
+                            }
+                            else
+                            {
+                                int cfW = Raylib.MeasureText("All progress will be lost. Are you sure?", 13);
+                                Raylib.DrawText("All progress will be lost. Are you sure?", width / 2 - cfW / 2, height / 2 + 38, 13, new Color(210, 155, 155, 255));
+                                if (DrawButton(new Rectangle(width / 2 - 126, height / 2 + 62, 118, 40), "YES, RESTART", new Color(100, 28, 28, 255), new Color(148, 42, 42, 255)))
+                                {
+                                    profile.Gold = 150;
+                                    profile.SkillPoints = 8;
+                                    completedNodes.Clear();
+                                    foreach (var cn in campaignNodes) cn.Completed = false;
+                                    SaveGame(profile, completedNodes);
+                                    confirmRestart = false;
+                                    scene = GameScene.TitleScreen;
+                                }
+                                if (DrawButton(new Rectangle(width / 2 + 8, height / 2 + 62, 118, 40), "CANCEL", new Color(32, 36, 48, 255), new Color(48, 55, 72, 255)))
+                                    confirmRestart = false;
                             }
                         }
                     }
@@ -1820,6 +1872,52 @@ class Program
                 }
             }
 
+            // Burn pile overlay
+            if (showBurnPile && scene == GameScene.BattleView && !isPaused)
+            {
+                var bsOv = battleService.State;
+                Raylib.DrawRectangle(0, 0, width, height, new Color(0, 0, 0, 195));
+                int ovW = Math.Min(680, width - 60);
+                int ovH = Math.Min(460, height - 80);
+                int ovX = width / 2 - ovW / 2;
+                int ovY = height / 2 - ovH / 2;
+                Raylib.DrawRectangleRounded(new Rectangle(ovX, ovY, ovW, ovH), 0.06f, 6, new Color(14, 16, 24, 255));
+                Raylib.DrawRectangleRoundedLinesEx(new Rectangle(ovX, ovY, ovW, ovH), 0.06f, 6, 1.5f, new Color(70, 75, 100, 200));
+                string ovTitle = $"DISCARD PILE  ({bsOv.BurnPile.Count} cards)";
+                int ovTW = Raylib.MeasureText(ovTitle, 20);
+                Raylib.DrawText(ovTitle, width / 2 - ovTW / 2, ovY + 16, 20, Color.White);
+                Raylib.DrawLine(ovX + 20, ovY + 48, ovX + ovW - 20, ovY + 48, new Color(55, 60, 80, 255));
+                if (bsOv.BurnPile.Count == 0)
+                {
+                    int emW = Raylib.MeasureText("Empty", 16);
+                    Raylib.DrawText("Empty", width / 2 - emW / 2, height / 2 - 8, 16, new Color(78, 82, 100, 255));
+                }
+                else
+                {
+                    int chipW = 148, chipH = 30, chipGap = 8;
+                    int cols = Math.Max(1, (ovW - 24) / (chipW + chipGap));
+                    for (int ci = 0; ci < bsOv.BurnPile.Count; ci++)
+                    {
+                        int row = ci / cols, col = ci % cols;
+                        int cx2 = ovX + 12 + col * (chipW + chipGap);
+                        int cy2 = ovY + 58 + row * (chipH + chipGap);
+                        if (cy2 + chipH > ovY + ovH - 36) break;
+                        var cd = bsOv.BurnPile[ci];
+                        Color chCol = CardColorFromName(cd.Name);
+                        Raylib.DrawRectangleRounded(new Rectangle(cx2, cy2, chipW, chipH), 0.28f, 4,
+                            new Color((byte)(chCol.R / 6), (byte)(chCol.G / 6), (byte)(chCol.B / 6), (byte)255));
+                        Raylib.DrawRectangleRoundedLinesEx(new Rectangle(cx2, cy2, chipW, chipH), 0.28f, 4, 1.2f, chCol);
+                        Raylib.DrawText(cd.Name, cx2 + 8, cy2 + 9, 11, Color.White);
+                        int costTW = Raylib.MeasureText($"[{cd.Cost}]", 11);
+                        Raylib.DrawText($"[{cd.Cost}]", cx2 + chipW - costTW - 7, cy2 + 9, 11, new Color(80, 180, 235, 255));
+                    }
+                }
+                int hintW2 = Raylib.MeasureText("Click anywhere or press ESC to close", 12);
+                Raylib.DrawText("Click anywhere or press ESC to close", width / 2 - hintW2 / 2, ovY + ovH - 24, 12, new Color(70, 75, 98, 255));
+                if (Raylib.IsMouseButtonPressed(MouseButton.Left))
+                    showBurnPile = false;
+            }
+
             // Pause overlay (BattleView only)
             if (isPaused && scene == GameScene.BattleView)
             {
@@ -1853,6 +1951,7 @@ class Program
                 if (DrawButton(new Rectangle(width / 2 - 130, pnY + 180, 260, 46), "QUIT TO TITLE",
                         new Color(72, 28, 28, 255), new Color(108, 42, 42, 255)))
                 {
+                    SaveGame(profile, completedNodes);
                     isPaused = false;
                     scene = GameScene.TitleScreen;
                 }

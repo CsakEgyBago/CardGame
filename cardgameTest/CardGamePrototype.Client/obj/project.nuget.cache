@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "aVrlNxl7Hbw=",
+  "dgSpecHash": "iWbqLnQo+vo=",
   "success": true,
-  "projectFilePath": "D:\\mcm\\CardGame\\cardgametest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj",
+  "projectFilePath": "D:\\mcm\\CardGame\\cardgameTest\\CardGamePrototype.Client\\CardGamePrototype.Client.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Gamer\\.nuget\\packages\\raylib-cs\\8.0.0\\raylib-cs.8.0.0.nupkg.sha512"
   ],
