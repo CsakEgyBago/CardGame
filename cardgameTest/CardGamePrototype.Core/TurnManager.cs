@@ -17,9 +17,10 @@ namespace CardGamePrototype.Core
 
         public void DrawToHand(BattleState state)
         {
+            int target = HandSize + state.HandSizeBonus;
             // Scan draw pile; skip cards whose Id is already in hand
             int scan = 0;
-            while (state.Hand.Count < HandSize && scan < state.DrawPile.Count)
+            while (state.Hand.Count < target && scan < state.DrawPile.Count)
             {
                 var candidate = state.DrawPile[scan];
                 if (state.Hand.Any(h => h.Id == candidate.Id))
@@ -61,7 +62,7 @@ namespace CardGamePrototype.Core
 
             slot.Occupant = new SummonedEntity(card.Name, card.MinionHp, slotIndex, card)
             {
-                BaseAttack = card.MinionAttack
+                BaseAttack = card.MinionAttack + state.MinionAttackBonus
             };
 
             state.Hand.RemoveAt(handIndex);
@@ -226,6 +227,16 @@ namespace CardGamePrototype.Core
             int frost = state.Enemy.ActiveElements.GetStacks(ElementType.Frost);
             if (frost > 0)
                 state.Enemy.ActiveElements.Consume(ElementType.Frost, 1);
+            // Lightning: burst damage — 3 per stack, all stacks consumed at once
+            int lightning = state.Enemy.ActiveElements.GetStacks(ElementType.Lightning);
+            if (lightning > 0)
+            {
+                int shockDmg = lightning * 3;
+                state.Enemy.ReceiveDamage(shockDmg);
+                state.DamageLog.Add(new DamageEvent("enemy_lightning", shockDmg));
+                state.Enemy.ActiveElements.Consume(ElementType.Lightning, lightning);
+                ChargeAbility(state, shockDmg, dealt: true);
+            }
         }
 
         private void EnemyAct(BattleState state)

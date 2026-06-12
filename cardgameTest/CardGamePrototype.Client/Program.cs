@@ -7,7 +7,7 @@ namespace CardGamePrototype.Client;
 
 public enum GameScene { TitleScreen, ModeSelect, CampaignMap, BattleView, MarketShop, DeckBuilder, RewardChoice, CampaignVictory }
 public enum GameTheme { SciFi, Fantasy }
-public enum NodeType { CombatMinion, CombatElite, CombatBoss }
+public enum NodeType { CombatMinion, CombatElite, CombatBoss, Rest }
 
 public class CampaignNode
 {
@@ -43,9 +43,11 @@ public class PlayerProfile
 
     bool HasNode(int id) => SkillTree.Nodes.Find(n => n.Id == id)?.IsUnlocked == true;
 
-    public int MaxEnergyBonus  => (HasNode(1) ? 1 : 0) + (HasNode(2) ? 1 : 0) + (HasNode(3) ? 2 : 0);
-    public int MaxHpBonus      => (HasNode(11) ? 10 : 0) + (HasNode(12) ? 15 : 0) + (HasNode(13) ? 25 : 0);
-    public int StartCardsBonus => (HasNode(4) ? 1 : 0) + (HasNode(5) ? 1 : 0);
+    public int MaxEnergyBonus   => (HasNode(1) ? 1 : 0) + (HasNode(2) ? 1 : 0) + (HasNode(3) ? 2 : 0);
+    public int MaxHpBonus       => (HasNode(11) ? 10 : 0) + (HasNode(12) ? 15 : 0) + (HasNode(13) ? 25 : 0);
+    public int StartCardsBonus  => (HasNode(4) ? 1 : 0) + (HasNode(5) ? 1 : 0);
+    public int MinionAtkBonus   => (HasNode(6) ? 1 : 0) + (HasNode(7) ? 2 : 0) + (HasNode(8) ? 3 : 0);
+    public int GoldBonus        => (HasNode(9) ? 15 : 0) + (HasNode(10) ? 25 : 0);
 }
 
 class SaveData
@@ -404,8 +406,9 @@ class Program
             new CampaignNode { Id=1, Name="Upper Flank",               Type=NodeType.CombatMinion, EnemyHp=44,  EnemyDefaultPosition=0, MapX=0.37f, MapY=0.18f, ChildIds=new(){4} },
             new CampaignNode { Id=2, Name="Core Passage",              Type=NodeType.CombatMinion, EnemyHp=50,  EnemyDefaultPosition=2, MapX=0.37f, MapY=0.50f, ChildIds=new(){4} },
             new CampaignNode { Id=3, Name="Lower Grid",                Type=NodeType.CombatMinion, EnemyHp=44,  EnemyDefaultPosition=4, MapX=0.37f, MapY=0.82f, ChildIds=new(){4} },
-            new CampaignNode { Id=4, Name="Arch-Executioner Frame",    Type=NodeType.CombatElite,  EnemyHp=75,  EnemyDefaultPosition=3, MapX=0.65f, MapY=0.50f, ChildIds=new(){5} },
+            new CampaignNode { Id=4, Name="Arch-Executioner Frame",    Type=NodeType.CombatElite,  EnemyHp=75,  EnemyDefaultPosition=3, MapX=0.65f, MapY=0.50f, ChildIds=new(){5,6} },
             new CampaignNode { Id=5, Name="The Catalyst Singularity",  Type=NodeType.CombatBoss,   EnemyHp=120, EnemyDefaultPosition=2, MapX=0.90f, MapY=0.50f, ChildIds=new() },
+            new CampaignNode { Id=6, Name="Recharge Bay",              Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.90f, MapY=0.12f, ChildIds=new(){5} },
         };
         HashSet<int> completedNodes = new();
 
@@ -465,6 +468,10 @@ class Program
         // Turn banner
         string turnBannerText = "";
         float turnBannerTimer = 0f;
+
+        // Map notice (e.g. "HEALED +15 HP")
+        string mapNotice = "";
+        float mapNoticeTimer = 0f;
 
         // Pause menu
         bool isPaused = false;
@@ -543,6 +550,9 @@ class Program
             // Turn banner decay
             if (turnBannerTimer > 0) turnBannerTimer -= dt;
 
+            // Map notice decay
+            if (mapNoticeTimer > 0) mapNoticeTimer -= dt;
+
             // Slot flash decay
             for (int fi = 0; fi < 5; fi++) if (slotFlashTimers[fi] > 0) slotFlashTimers[fi] -= dt;
 
@@ -615,6 +625,13 @@ class Program
                     Raylib.DrawText($"{profile.Gold} G", width - 215, 16, 20, Color.Gold);
                     Raylib.DrawText($"{profile.SkillPoints} SP", width - 100, 16, 20, Color.SkyBlue);
 
+                    if (mapNoticeTimer > 0)
+                    {
+                        int mnA = (int)(Math.Min(1f, mapNoticeTimer / 0.4f) * 255);
+                        int mnW = Raylib.MeasureText(mapNotice, 16);
+                        Raylib.DrawText(mapNotice, width / 2 - mnW / 2, 17, 16, new Color(80, 230, 110, mnA));
+                    }
+
                     if (DrawButton(new Rectangle(40, 74, 160, 38), "DECK BUILDER", new Color(58, 70, 92, 255), new Color(78, 98, 130, 255)))
                         scene = GameScene.DeckBuilder;
                     if (DrawButton(new Rectangle(212, 74, 165, 38), "MARKET  /  SKILLS", new Color(82, 62, 42, 255), new Color(120, 92, 62, 255)))
@@ -659,13 +676,20 @@ class Program
                         bool isAvail   = availableIds.Contains(node.Id);
                         bool nodeHov   = Raylib.CheckCollisionPointRec(mouse, new Rectangle(nodeX - 85, nodeY - 55, 170, 110)) && isAvail;
 
+                        bool isRest = node.Type == NodeType.Rest;
                         Color nodeBase = node.Completed ? new Color(28, 80, 42, 255)
-                                       : isAvail ? (node.Type == NodeType.CombatBoss ? new Color(95, 28, 28, 255) : new Color(85, 42, 18, 255))
+                                       : isAvail ? (node.Type == NodeType.CombatBoss ? new Color(95, 28, 28, 255)
+                                                  : isRest                           ? new Color(28, 62, 42, 255)
+                                                  :                                    new Color(85, 42, 18, 255))
                                        : new Color(18, 20, 28, 255);
                         Color nodeHovC = node.Completed ? new Color(38, 105, 55, 255)
-                                       : node.Type == NodeType.CombatBoss ? new Color(135, 38, 38, 255) : new Color(120, 60, 22, 255);
+                                       : node.Type == NodeType.CombatBoss ? new Color(135, 38, 38, 255)
+                                       : isRest                           ? new Color(42, 100, 62, 255)
+                                       :                                    new Color(120, 60, 22, 255);
                         Color nodeBord = node.Completed ? new Color(55, 185, 80, 200)
-                                       : isAvail ? (node.Type == NodeType.CombatBoss ? new Color(210, 55, 55, 200) : new Color(218, 130, 40, 200))
+                                       : isAvail ? (node.Type == NodeType.CombatBoss ? new Color(210, 55, 55, 200)
+                                                  : isRest                           ? new Color(60, 210, 120, 200)
+                                                  :                                    new Color(218, 130, 40, 200))
                                        : new Color(38, 40, 52, 180);
 
                         Rectangle nodeBox = new(nodeX - 85, nodeY - 55, 170, 110);
@@ -676,8 +700,8 @@ class Program
                         if (!isAvail && !node.Completed)
                             Raylib.DrawRectangleRounded(nodeBox, 0.1f, 6, new Color(0, 0, 0, 120));
 
-                        string typeTag = node.Type switch { NodeType.CombatElite => "ELITE", NodeType.CombatBoss => "BOSS", _ => "SECTOR" };
-                        Color typeCol  = node.Type switch { NodeType.CombatElite => new Color(215, 168, 38, 255), NodeType.CombatBoss => new Color(210, 55, 55, 255), _ => new Color(120, 175, 125, 255) };
+                        string typeTag = node.Type switch { NodeType.CombatElite => "ELITE", NodeType.CombatBoss => "BOSS", NodeType.Rest => "REST", _ => "SECTOR" };
+                        Color typeCol  = node.Type switch { NodeType.CombatElite => new Color(215, 168, 38, 255), NodeType.CombatBoss => new Color(210, 55, 55, 255), NodeType.Rest => new Color(60, 215, 130, 255), _ => new Color(120, 175, 125, 255) };
                         int ttw = Raylib.MeasureText(typeTag, 11);
                         Raylib.DrawText(typeTag, nodeX - ttw / 2, nodeY - 46, 11, typeCol);
 
@@ -685,68 +709,99 @@ class Program
                         int dnw = Raylib.MeasureText(displayName, 12);
                         Raylib.DrawText(displayName, nodeX - dnw / 2, nodeY - 22, 12, node.Completed ? new Color(145, 210, 155, 255) : Color.White);
 
-                        string hpStr = $"HP  {node.EnemyHp}";
-                        int hpw = Raylib.MeasureText(hpStr, 11);
-                        Raylib.DrawText(hpStr, nodeX - hpw / 2, nodeY + 2, 11, new Color(190, 100, 100, 255));
+                        if (isRest)
+                        {
+                            int restMaxHpDisplay = 50 + profile.MaxHpBonus;
+                            int restHealAmt = Math.Max(1, (int)(restMaxHpDisplay * 0.30f));
+                            string healStr = $"Recover  +{restHealAmt} HP";
+                            int healW = Raylib.MeasureText(healStr, 11);
+                            Raylib.DrawText(healStr, nodeX - healW / 2, nodeY + 2, 11, new Color(80, 215, 120, 220));
+                        }
+                        else
+                        {
+                            string hpStr = $"HP  {node.EnemyHp}";
+                            int hpw = Raylib.MeasureText(hpStr, 11);
+                            Raylib.DrawText(hpStr, nodeX - hpw / 2, nodeY + 2, 11, new Color(190, 100, 100, 255));
+                        }
 
                         if (node.Completed)
                         {
-                            int ckw = Raylib.MeasureText("CLEARED", 11);
-                            Raylib.DrawText("CLEARED", nodeX - ckw / 2, nodeY + 22, 11, new Color(75, 200, 95, 255));
+                            string clearedLbl = isRest ? "RESTED" : "CLEARED";
+                            int ckw = Raylib.MeasureText(clearedLbl, 11);
+                            Raylib.DrawText(clearedLbl, nodeX - ckw / 2, nodeY + 22, 11, new Color(75, 200, 95, 255));
                         }
                         else if (isAvail)
                         {
-                            int ffw = Raylib.MeasureText("CLICK TO FIGHT", 10);
-                            Raylib.DrawText("CLICK TO FIGHT", nodeX - ffw / 2, nodeY + 22, 10, new Color(218, 130, 40, 220));
+                            string actionLbl = isRest ? "CLICK TO REST" : "CLICK TO FIGHT";
+                            Color actionCol  = isRest ? new Color(60, 210, 120, 220) : new Color(218, 130, 40, 220);
+                            int ffw = Raylib.MeasureText(actionLbl, 10);
+                            Raylib.DrawText(actionLbl, nodeX - ffw / 2, nodeY + 22, 10, actionCol);
                         }
 
                         if (nodeHov && Raylib.IsMouseButtonPressed(MouseButton.Left))
                         {
-                            activeBattleNode = node;
-                            battleService.NewBattle();
-                            battleService.State.DrawPile.Clear();
-                            battleService.State.Hand.Clear();
-                            battleService.State.BurnPile.Clear();
-
-                            int finalMaxHp = 50 + profile.MaxHpBonus;
-                            battleService.State.Player.MaxHp = finalMaxHp;
-                            int startHp = profile.PlayerHp > 0 ? Math.Min(profile.PlayerHp, finalMaxHp) : finalMaxHp;
-                            battleService.State.Player.Hp    = startHp;
-                            battleService.State.Enemy.MaxHp  = node.EnemyHp;
-                            battleService.State.Enemy.Hp     = node.EnemyHp;
-                            battleService.State.Enemy.Position = node.EnemyDefaultPosition;
-
-                            List<CardDefinition> gameDeckCopy = new(profile.ActiveDeck);
-                            for (int k = gameDeckCopy.Count - 1; k > 0; k--)
+                            if (isRest)
                             {
-                                int idx = battleService.State.Rng.Next(k + 1);
-                                (gameDeckCopy[k], gameDeckCopy[idx]) = (gameDeckCopy[idx], gameDeckCopy[k]);
+                                int restMaxHp = 50 + profile.MaxHpBonus;
+                                int healAmt   = Math.Max(1, (int)(restMaxHp * 0.30f));
+                                int curHp     = profile.PlayerHp > 0 ? profile.PlayerHp : restMaxHp;
+                                profile.PlayerHp = Math.Min(restMaxHp, curHp + healAmt);
+                                node.Completed = true;
+                                completedNodes.Add(node.Id);
+                                SaveGame(profile, completedNodes);
+                                mapNotice = $"RESTED  +{healAmt} HP";
+                                mapNoticeTimer = 2.5f;
+                                Raylib.PlaySound(ui2Sound);
                             }
-                            battleService.State.DrawPile.AddRange(gameDeckCopy);
-                            battleService.State.PlayerEnergyBonus = profile.MaxEnergyBonus;
-                            battleService.State.EquippedAbility   = profile.SelectedAbility;
-                            battleService.State.Player.Energy     = 4 + profile.MaxEnergyBonus;
-                            new TurnManager().DrawToHand(battleService.State);
-                            // Set enemy variant by node type
-                            battleService.State.EnemyVariant = node.Type switch {
-                                NodeType.CombatElite => "elite",
-                                NodeType.CombatBoss  => "boss",
-                                _                    => "standard"
-                            };
-                            battleEndSoundPlayed = false;
-                            prevAbilityCharge    = 0f;
-                            showBurnPile   = false;
-                            confirmRestart = false;
-                            displayedEnemyHp  = -1f;
-                            displayedPlayerHp = -1f;
-                            enemyBobTime = 0f;
-                            floatDmgs.Clear();
-                            Array.Clear(slotFlashTimers, 0, 5);
-                            Array.Clear(prevSlotOccupied, 0, 5);
-                            turnBannerText = "YOUR TURN";
-                            turnBannerTimer = 1.8f;
-                            Raylib.PlaySound(ui1Sound);
-                            scene = GameScene.BattleView;
+                            else
+                            {
+                                activeBattleNode = node;
+                                battleService.NewBattle();
+                                battleService.State.DrawPile.Clear();
+                                battleService.State.Hand.Clear();
+                                battleService.State.BurnPile.Clear();
+
+                                int finalMaxHp = 50 + profile.MaxHpBonus;
+                                battleService.State.Player.MaxHp = finalMaxHp;
+                                int startHp = profile.PlayerHp > 0 ? Math.Min(profile.PlayerHp, finalMaxHp) : finalMaxHp;
+                                battleService.State.Player.Hp    = startHp;
+                                battleService.State.Enemy.MaxHp  = node.EnemyHp;
+                                battleService.State.Enemy.Hp     = node.EnemyHp;
+                                battleService.State.Enemy.Position = node.EnemyDefaultPosition;
+
+                                List<CardDefinition> gameDeckCopy = new(profile.ActiveDeck);
+                                for (int k = gameDeckCopy.Count - 1; k > 0; k--)
+                                {
+                                    int idx = battleService.State.Rng.Next(k + 1);
+                                    (gameDeckCopy[k], gameDeckCopy[idx]) = (gameDeckCopy[idx], gameDeckCopy[k]);
+                                }
+                                battleService.State.DrawPile.AddRange(gameDeckCopy);
+                                battleService.State.PlayerEnergyBonus = profile.MaxEnergyBonus;
+                                battleService.State.MinionAttackBonus = profile.MinionAtkBonus;
+                                battleService.State.HandSizeBonus     = profile.StartCardsBonus;
+                                battleService.State.EquippedAbility   = profile.SelectedAbility;
+                                battleService.State.Player.Energy     = 4 + profile.MaxEnergyBonus;
+                                new TurnManager().DrawToHand(battleService.State);
+                                battleService.State.EnemyVariant = node.Type switch {
+                                    NodeType.CombatElite => "elite",
+                                    NodeType.CombatBoss  => "boss",
+                                    _                    => "standard"
+                                };
+                                battleEndSoundPlayed = false;
+                                prevAbilityCharge    = 0f;
+                                showBurnPile   = false;
+                                confirmRestart = false;
+                                displayedEnemyHp  = -1f;
+                                displayedPlayerHp = -1f;
+                                enemyBobTime = 0f;
+                                floatDmgs.Clear();
+                                Array.Clear(slotFlashTimers, 0, 5);
+                                Array.Clear(prevSlotOccupied, 0, 5);
+                                turnBannerText = "YOUR TURN";
+                                turnBannerTimer = 1.8f;
+                                Raylib.PlaySound(ui1Sound);
+                                scene = GameScene.BattleView;
+                            }
                         }
                     }
                     break;
@@ -913,21 +968,26 @@ class Program
                         int fS  = bs.Enemy.ActiveElements.GetStacks(ElementType.Fire);
                         int frS = bs.Enemy.ActiveElements.GetStacks(ElementType.Frost);
                         int biS = bs.Enemy.ActiveElements.GetStacks(ElementType.Bio);
+                        int lnS = bs.Enemy.ActiveElements.GetStacks(ElementType.Lightning);
                         if (fS  > 0) Raylib.DrawText($"FIRE:{fS}",  width - SW + 8,   48, 11, new Color(255, 140, 0, 255));
                         if (frS > 0) Raylib.DrawText($"ICE:{frS}",  width - SW + 68,  48, 11, new Color(80, 220, 255, 255));
                         if (biS > 0) Raylib.DrawText($"BIO:{biS}",  width - SW + 128, 48, 11, new Color(60, 210, 80, 255));
+                        if (lnS > 0) Raylib.DrawText($"ARC:{lnS}",  width - SW + 8,   60, 11, new Color(200, 160, 255, 255));
                         // Status tooltips
                         bool sf8FireHov  = fS  > 0 && Raylib.CheckCollisionPointRec(mouse, new Rectangle(width - SW + 4,   42, 60, 20));
                         bool sf8FrostHov = frS > 0 && Raylib.CheckCollisionPointRec(mouse, new Rectangle(width - SW + 64,  42, 60, 20));
                         bool sf8BioHov   = biS > 0 && Raylib.CheckCollisionPointRec(mouse, new Rectangle(width - SW + 124, 42, 60, 20));
-                        if (sf8FireHov || sf8FrostHov || sf8BioHov)
+                        bool sf8LightHov = lnS > 0 && Raylib.CheckCollisionPointRec(mouse, new Rectangle(width - SW + 4,   54, 60, 20));
+                        if (sf8FireHov || sf8FrostHov || sf8BioHov || sf8LightHov)
                         {
-                            string stTitle = sf8FireHov  ? $"FIRE x{fS}"  : sf8FrostHov ? $"ICE x{frS}"  : $"BIO x{biS}";
+                            string stTitle = sf8FireHov  ? $"FIRE x{fS}"  : sf8FrostHov ? $"ICE x{frS}"  : sf8LightHov ? $"ARC x{lnS}" : $"BIO x{biS}";
                             string stBody  = sf8FireHov  ? "Burns 2 dmg/stack each turn, -1 stack/turn"
                                            : sf8FrostHov ? "Reduces enemy attack, -1 stack/turn"
+                                           : sf8LightHov ? "Burst 3 dmg/stack, all stacks consumed at once"
                                            :               "Poisons 1 dmg/stack each turn, -1 stack/turn";
                             Color stAccent = sf8FireHov  ? new Color(255, 140, 0, 200)
                                            : sf8FrostHov ? new Color(80, 220, 255, 200)
+                                           : sf8LightHov ? new Color(200, 160, 255, 200)
                                            :               new Color(60, 210, 80, 200);
                             int stW = 230, stH = 64;
                             int stX = width - SW - stW - 6, stY = 38;
@@ -1183,15 +1243,6 @@ class Program
 
                         bool showFan = showHandCards; // alias for compat
 
-                        // Header (0-54)
-                        Raylib.DrawRectangle(0, 0, width, 54, new Color(22, 15, 8, 255));
-                        Raylib.DrawLine(0, 54, width, 54, new Color(105, 78, 42, 180));
-                        DrawBar(12, 14, 200, 10, (float)bs.Player.Hp / Math.Max(bs.Player.MaxHp, 1), new Color(20, 80, 30, 255), new Color(22, 30, 18, 255));
-                        DrawBar(12, 14, 200, 10, Math.Max(0f, displayedPlayerHp) / Math.Max(bs.Player.MaxHp, 1), new Color(60, 200, 80, 255), Color.Blank);
-                        int hpFW = Raylib.MeasureText($"{bs.Player.Hp}/{bs.Player.MaxHp}", 12);
-                        Raylib.DrawText($"{bs.Player.Hp}/{bs.Player.MaxHp}", 12 + 100 - hpFW / 2, 28, 12, fpText);
-                        Raylib.DrawText($"NRG {bs.Player.Energy}", 220, 14, 13, new Color(80, 185, 235, 255));
-                        Raylib.DrawText($"DIS {bs.BurnPile.Count}", 220, 32, 12, new Color(205, 140, 48, 255));
                         // Header (0-54px)
                         Raylib.DrawRectangle(0, 0, width, 54, new Color(22, 15, 8, 255));
                         Raylib.DrawLine(0, 54, width, 54, new Color(105, 78, 42, 180));
@@ -1234,21 +1285,26 @@ class Program
                         int eFire  = bs.Enemy.ActiveElements.GetStacks(ElementType.Fire);
                         int eFrost = bs.Enemy.ActiveElements.GetStacks(ElementType.Frost);
                         int eBio   = bs.Enemy.ActiveElements.GetStacks(ElementType.Bio);
+                        int eLght  = bs.Enemy.ActiveElements.GetStacks(ElementType.Lightning);
                         if (eFire  > 0) Raylib.DrawText($"Fire {eFire}",   width / 2 - 160, epBot - 18, 11, new Color(225, 115, 38, 255));
                         if (eFrost > 0) Raylib.DrawText($"Frost {eFrost}", width / 2 + 20,  epBot - 18, 11, new Color(88, 185, 235, 255));
                         if (eBio   > 0) Raylib.DrawText($"Bio {eBio}",     width / 2 + 100, epBot - 18, 11, new Color(68, 200, 80, 255));
+                        if (eLght  > 0) Raylib.DrawText($"Arc {eLght}",    width / 2 - 80,  epBot - 4,  11, new Color(185, 140, 255, 255));
                         // Status tooltips
                         bool fpFireHov  = eFire  > 0 && Raylib.CheckCollisionPointRec(mouse, new Rectangle(width / 2 - 164, epBot - 22, 70, 18));
                         bool fpFrostHov = eFrost > 0 && Raylib.CheckCollisionPointRec(mouse, new Rectangle(width / 2 + 16,  epBot - 22, 70, 18));
                         bool fpBioHov   = eBio   > 0 && Raylib.CheckCollisionPointRec(mouse, new Rectangle(width / 2 + 96,  epBot - 22, 60, 18));
-                        if (fpFireHov || fpFrostHov || fpBioHov)
+                        bool fpLghtHov  = eLght  > 0 && Raylib.CheckCollisionPointRec(mouse, new Rectangle(width / 2 - 84,  epBot - 8,  60, 18));
+                        if (fpFireHov || fpFrostHov || fpBioHov || fpLghtHov)
                         {
-                            string fpTtTitle = fpFireHov  ? $"Fire  x{eFire}"  : fpFrostHov ? $"Frost  x{eFrost}"  : $"Bio  x{eBio}";
+                            string fpTtTitle = fpFireHov  ? $"Fire  x{eFire}"  : fpFrostHov ? $"Frost  x{eFrost}" : fpLghtHov ? $"Arc  x{eLght}" : $"Bio  x{eBio}";
                             string fpTtBody  = fpFireHov  ? "Burns 2 dmg/stack each turn, -1 stack/turn"
                                              : fpFrostHov ? "Reduces enemy attack damage, -1 stack/turn"
+                                             : fpLghtHov  ? "Burst 3 dmg/stack, all stacks consumed at once"
                                              :               "Poisons 1 dmg/stack each turn, -1 stack/turn";
                             Color fpTtAccent = fpFireHov  ? new Color(225, 115, 38, 220)
                                              : fpFrostHov ? new Color(88, 185, 235, 220)
+                                             : fpLghtHov  ? new Color(185, 140, 255, 220)
                                              :               new Color(68, 200, 80, 220);
                             int fpTtW = 240, fpTtH = 64;
                             float fpTtX = width / 2f - fpTtW / 2f;
@@ -1572,7 +1628,7 @@ class Program
                         Raylib.DrawRectangle(0, 0, width, height, new Color(8, 9, 13, 215));
                         if (bs.Enemy.IsDead)
                         {
-                            int goldReward = activeBattleNode?.Type switch { NodeType.CombatElite => 80, NodeType.CombatBoss => 120, _ => 60 };
+                            int goldReward = (activeBattleNode?.Type switch { NodeType.CombatElite => 80, NodeType.CombatBoss => 120, _ => 60 }) + profile.GoldBonus;
                             Raylib.DrawRectangle(width / 2 - 220, height / 2 - 80, 440, 205, new Color(18, 22, 16, 240));
                             Raylib.DrawRectangleLinesEx(new Rectangle(width / 2 - 220, height / 2 - 80, 440, 205), 1.5f, new Color(72, 185, 88, 160));
                             int vcw = Raylib.MeasureText("VICTORY", 56);
@@ -1635,7 +1691,7 @@ class Program
                                 Raylib.DrawText("All progress will be lost. Are you sure?", width / 2 - cfW / 2, height / 2 + 38, 13, new Color(210, 155, 155, 255));
                                 if (DrawButton(new Rectangle(width / 2 - 126, height / 2 + 62, 118, 40), "YES, RESTART", new Color(100, 28, 28, 255), new Color(148, 42, 42, 255)))
                                 {
-                                    profile.Gold = 150;
+                                    profile.Gold = 150 + profile.GoldBonus;
                                     profile.SkillPoints = 8;
                                     profile.PlayerHp = 0;
                                     completedNodes.Clear();
@@ -1992,7 +2048,7 @@ class Program
                     Raylib.DrawText(vcStats, width / 2 - vcStW / 2, height / 2 - 26, 14, new Color(140, 185, 140, 255));
                     if (DrawButton(new Rectangle(width / 2 - 150, height / 2 + 14, 300, 52), "START NEW RUN", new Color(28, 62, 28, 255), new Color(42, 98, 42, 255)))
                     {
-                        profile.Gold = 150;
+                        profile.Gold = 150 + profile.GoldBonus;
                         profile.SkillPoints = 8;
                         profile.PlayerHp = 0;
                         completedNodes.Clear();

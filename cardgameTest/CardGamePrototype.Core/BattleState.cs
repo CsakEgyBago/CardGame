@@ -25,6 +25,8 @@ namespace CardGamePrototype.Core
         public int CardsPlayedTotal    { get; set; }
         public int EnemyTurnCount      { get; set; }
         public int PlayerEnergyBonus   { get; set; }
+        public int MinionAttackBonus   { get; set; }
+        public int HandSizeBonus       { get; set; }
 
         public TurnPhase Phase { get; set; } = TurnPhase.PlayerTurn;
         public int BoardSize   { get; } = 5;
