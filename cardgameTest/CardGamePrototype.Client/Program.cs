@@ -5,7 +5,7 @@ using CardGamePrototype.Core;
 
 namespace CardGamePrototype.Client;
 
-public enum GameScene { TitleScreen, ModeSelect, CampaignMap, BattleView, MarketShop, DeckBuilder, RewardChoice }
+public enum GameScene { TitleScreen, ModeSelect, CampaignMap, BattleView, MarketShop, DeckBuilder, RewardChoice, CampaignVictory }
 public enum GameTheme { SciFi, Fantasy }
 public enum NodeType { CombatMinion, CombatElite, CombatBoss }
 
@@ -35,6 +35,7 @@ public class PlayerProfile
 {
     public int Gold { get; set; } = 150;
     public int SkillPoints { get; set; } = 8;
+    public int PlayerHp { get; set; } = 0; // 0 = use max (full heal)
     public List<CardDefinition> TotalCollection { get; set; } = new();
     public List<CardDefinition> ActiveDeck { get; set; } = new();
     public SkillTreeManager SkillTree { get; set; } = new();
@@ -51,6 +52,7 @@ class SaveData
 {
     public int Gold { get; set; }
     public int SkillPoints { get; set; }
+    public int PlayerHp { get; set; }
     public List<string> CollectionIds  { get; set; } = new();
     public List<string> DeckIds        { get; set; } = new();
     public string? AbilityId           { get; set; }
@@ -70,6 +72,7 @@ class Program
         {
             Gold          = profile.Gold,
             SkillPoints   = profile.SkillPoints,
+            PlayerHp      = profile.PlayerHp,
             CollectionIds = profile.TotalCollection.Select(c => c.Id).ToList(),
             DeckIds       = profile.ActiveDeck.Select(c => c.Id).ToList(),
             AbilityId     = profile.SelectedAbility?.Id,
@@ -91,6 +94,7 @@ class Program
             if (data == null) return false;
             profile.Gold        = data.Gold;
             profile.SkillPoints = data.SkillPoints;
+            profile.PlayerHp    = data.PlayerHp;
 
             var allCards = CardLibrary.GetAll().ToDictionary(c => c.Id);
             profile.TotalCollection.Clear();
@@ -467,6 +471,11 @@ class Program
         bool showBurnPile = false;
         bool confirmRestart = false;
         float masterVolume = 1.0f;
+
+        // Animation state
+        float displayedEnemyHp  = -1f;
+        float displayedPlayerHp = -1f;
+        float enemyBobTime = 0f;
         Raylib.SetMasterVolume(masterVolume);
 
         // Load saved run if one exists
@@ -506,6 +515,17 @@ class Program
                 {
                     if (showBurnPile) showBurnPile = false;
                 }
+            }
+
+            // Animation: HP bar lerp + enemy bob
+            if (scene == GameScene.BattleView)
+            {
+                var bsA = battleService.State;
+                enemyBobTime += dt;
+                if (displayedEnemyHp < 0)  { displayedEnemyHp  = bsA.Enemy.Hp;  displayedPlayerHp = bsA.Player.Hp; }
+                float lf = Math.Min(1f, dt * 14f);
+                displayedEnemyHp  += (bsA.Enemy.Hp  - displayedEnemyHp)  * lf;
+                displayedPlayerHp += (bsA.Player.Hp - displayedPlayerHp) * lf;
             }
 
             // Shake decay
@@ -589,6 +609,9 @@ class Program
                     Raylib.DrawRectangle(0, 0, width, 58, new Color(14, 16, 21, 255));
                     Raylib.DrawLine(0, 58, width, 58, new Color(35, 40, 52, 255));
                     Raylib.DrawText("CAMPAIGN", 28, 16, 22, Color.White);
+                    int mapMaxHp  = 50 + profile.MaxHpBonus;
+                    int mapHpDisp = profile.PlayerHp > 0 ? profile.PlayerHp : mapMaxHp;
+                    Raylib.DrawText($"HP {mapHpDisp}/{mapMaxHp}", width - 420, 16, 18, new Color(80, 215, 100, 255));
                     Raylib.DrawText($"{profile.Gold} G", width - 215, 16, 20, Color.Gold);
                     Raylib.DrawText($"{profile.SkillPoints} SP", width - 100, 16, 20, Color.SkyBlue);
 
@@ -687,7 +710,8 @@ class Program
 
                             int finalMaxHp = 50 + profile.MaxHpBonus;
                             battleService.State.Player.MaxHp = finalMaxHp;
-                            battleService.State.Player.Hp    = finalMaxHp;
+                            int startHp = profile.PlayerHp > 0 ? Math.Min(profile.PlayerHp, finalMaxHp) : finalMaxHp;
+                            battleService.State.Player.Hp    = startHp;
                             battleService.State.Enemy.MaxHp  = node.EnemyHp;
                             battleService.State.Enemy.Hp     = node.EnemyHp;
                             battleService.State.Enemy.Position = node.EnemyDefaultPosition;
@@ -713,6 +737,9 @@ class Program
                             prevAbilityCharge    = 0f;
                             showBurnPile   = false;
                             confirmRestart = false;
+                            displayedEnemyHp  = -1f;
+                            displayedPlayerHp = -1f;
+                            enemyBobTime = 0f;
                             floatDmgs.Clear();
                             Array.Clear(slotFlashTimers, 0, 5);
                             Array.Clear(prevSlotOccupied, 0, 5);
@@ -802,46 +829,63 @@ class Program
                         if (!dragging)
                             for (int j = 0; j < bs.Hand.Count; j++)
                             {
-                                Rectangle hcr = new Rectangle(10, 85 + j * (cpH + 6), cpW, cpH);
+                                Rectangle hcr = new Rectangle(10, 74 + j * (cpH + 6), cpW, cpH);
                                 if (Raylib.CheckCollisionPointRec(mouse, hcr)) { hovSF = j; break; }
                             }
 
                         // 8-bit palette constants
-                        Color px8Bg   = new Color(0,   0,   0,   255); // black
+                        Color px8Bg   = new Color(2,   4,   2,   255); // near-black green
                         Color px8Grn  = new Color(0,   255, 65,  255); // NES green
                         Color px8GrnD = new Color(0,   80,  20,  255); // dark green
                         Color px8Cyn  = new Color(0,   220, 220, 255); // cyan
                         Color px8Red  = new Color(255, 30,  30,  255); // red
                         Color px8Yel  = new Color(255, 215, 0,   255); // yellow
-                        Color px8Gry  = new Color(80,  80,  80,  255); // gray
+                        Color px8Gry  = new Color(90,  95,  90,  255); // gray
 
                         // Left sidebar: Player (8-bit)
                         Raylib.DrawRectangle(0, 0, SW, height, px8Bg);
+                        Raylib.DrawRectangle(0, 0, SW, 68, new Color(0, 18, 5, 255)); // header panel
                         Raylib.DrawLine(SW, 0, SW, height, px8GrnD);
-                        Raylib.DrawRectangle(0, 0, SW, 2, px8Grn); // top neon bar
-                        Raylib.DrawText("< PLAYER >", 10, 8, 11, px8GrnD);
-                        Raylib.DrawText($"HP {bs.Player.Hp}/{bs.Player.MaxHp}", 10, 22, 13, px8Grn);
-                        DrawBar(10, 38, SW - 22, 5, (float)bs.Player.Hp / Math.Max(bs.Player.MaxHp, 1), px8Grn, new Color(0, 18, 0, 255));
-                        Raylib.DrawText($"NRG {bs.Player.Energy}", 10, 48, 12, px8Cyn);
-                        bool disHovSF = Raylib.CheckCollisionPointRec(mouse, new Rectangle(107, 42, 80, 18));
+                        Raylib.DrawRectangle(0, 0, SW, 2, px8Grn);
+                        Raylib.DrawRectangle(0, 2, SW, 1, new Color(0, 100, 30, 60));
+                        Raylib.DrawText("▶ PLAYER", 10, 8, 11, new Color(0, 155, 40, 255));
+                        Raylib.DrawText($"HP  {bs.Player.Hp} / {bs.Player.MaxHp}", 10, 22, 13, px8Grn);
+                        // HP bar with lerped fill + ghost
+                        DrawBar(10, 38, SW - 22, 6, (float)bs.Player.Hp / Math.Max(bs.Player.MaxHp, 1), new Color(0, 50, 15, 255), new Color(0, 8, 2, 255));
+                        DrawBar(10, 38, SW - 22, 6, Math.Max(0f, displayedPlayerHp) / Math.Max(bs.Player.MaxHp, 1), px8Grn, Color.Blank);
+                        // Energy pips
+                        int maxEnPips = Math.Max(bs.Player.Energy, TurnManager.BaseEnergyPerTurn + bs.PlayerEnergyBonus);
+                        maxEnPips = Math.Min(maxEnPips, 10);
+                        for (int ei = 0; ei < maxEnPips; ei++)
+                        {
+                            bool avail = ei < bs.Player.Energy;
+                            Raylib.DrawCircleV(new Vector2(14 + ei * 11, 54), 4f, avail ? px8Cyn : new Color(0, 35, 40, 255));
+                            if (avail) Raylib.DrawCircleLines(14 + ei * 11, 54, 4, new Color(80, 255, 255, 50));
+                        }
+                        bool disHovSF = Raylib.CheckCollisionPointRec(mouse, new Rectangle(107, 47, 80, 16));
                         Raylib.DrawText($"DIS {bs.BurnPile.Count}", 110, 48, 12, disHovSF ? Color.White : px8Yel);
                         if (!isPaused && disHovSF && Raylib.IsMouseButtonPressed(MouseButton.Left))
                             { showBurnPile = !showBurnPile; dragging = false; draggingIndex = -1; }
-                        Raylib.DrawLine(0, 64, SW, 64, px8GrnD);
+                        Raylib.DrawLine(0, 66, SW, 66, px8GrnD);
 
                         for (int i = 0; i < bs.Hand.Count; i++)
                         {
                             if (dragging && i == draggingIndex) continue;
-                            Rectangle cr = new Rectangle(10, 72 + i * (cpH + 6), cpW, cpH);
+                            Rectangle cr = new Rectangle(10, 74 + i * (cpH + 6), cpW, cpH);
                             var hc = bs.Hand[i];
                             bool hov8 = i == hovSF;
-                            // 8-bit card: sharp, high-contrast
-                            Raylib.DrawRectangleRec(cr, new Color(0, 12, 0, 255));
-                            Raylib.DrawRectangleLinesEx(cr, 2, hov8 ? px8Yel : px8GrnD);
-                            Raylib.DrawText(hc.Name, (int)cr.X + 5, (int)cr.Y + 5, 11, hov8 ? px8Yel : px8Grn);
-                            Raylib.DrawLine((int)cr.X, (int)cr.Y + 20, (int)(cr.X + cr.Width), (int)cr.Y + 20, px8GrnD);
-                            Raylib.DrawText(hc.Description, (int)cr.X + 5, (int)cr.Y + 24, 9, px8Gry);
-                            Raylib.DrawText($"[{hc.Cost}]", (int)(cr.X + cr.Width - 22), (int)cr.Y + 5, 11, px8Cyn);
+                            // Card with element accent strip
+                            Color elCol = CardColorFromName(hc.Name);
+                            Raylib.DrawRectangleRec(cr, new Color((byte)(elCol.R / 10), (byte)(elCol.G / 10), (byte)(elCol.B / 10), (byte)255));
+                            Raylib.DrawRectangleLinesEx(cr, hov8 ? 2 : 1, hov8 ? px8Yel : new Color((byte)(elCol.R / 3), (byte)(elCol.G / 3), (byte)(elCol.B / 3), (byte)180));
+                            Raylib.DrawRectangle((int)cr.X + 1, (int)cr.Y + 1, (int)cr.Width - 2, 4, new Color((byte)(elCol.R / 2), (byte)(elCol.G / 2), (byte)(elCol.B / 2), (byte)200));
+                            Raylib.DrawText(hc.Name, (int)cr.X + 6, (int)cr.Y + 8, 11, hov8 ? px8Yel : Color.White);
+                            Raylib.DrawLine((int)cr.X, (int)cr.Y + 23, (int)(cr.X + cr.Width), (int)cr.Y + 23, new Color((byte)(elCol.R / 5), (byte)(elCol.G / 5), (byte)(elCol.B / 5), (byte)140));
+                            Raylib.DrawText(hc.Description, (int)cr.X + 6, (int)cr.Y + 27, 9, new Color(155, 162, 175, 255));
+                            Raylib.DrawCircleV(new Vector2(cr.X + cr.Width - 14, cr.Y + 14), 11f, new Color(0, 40, 90, 255));
+                            Raylib.DrawCircleLines((int)(cr.X + cr.Width - 14), (int)(cr.Y + 14), 11, new Color(40, 90, 200, 160));
+                            int c8W = Raylib.MeasureText($"{hc.Cost}", 11);
+                            Raylib.DrawText($"{hc.Cost}", (int)(cr.X + cr.Width - 14 - c8W / 2), (int)(cr.Y + 8), 11, Color.White);
                             if (!isPaused && !showBurnPile && Raylib.IsMouseButtonPressed(MouseButton.Left) && Raylib.CheckCollisionPointRec(mouse, cr) && !dragging)
                             {
                                 dragging = true; draggingIndex = i; isDraggingFromCollectionPool = false;
@@ -856,13 +900,16 @@ class Program
 
                         // Right sidebar: Enemy / Board (8-bit)
                         Raylib.DrawRectangle(width - SW, 0, SW, height, px8Bg);
+                        Raylib.DrawRectangle(width - SW, 0, SW, 74, new Color(22, 3, 3, 255)); // header panel
                         Raylib.DrawLine(width - SW, 0, width - SW, height, new Color(60, 0, 0, 255));
                         Raylib.DrawRectangle(width - SW, 0, SW, 2, px8Red);
-                        Raylib.DrawText("< ENEMY >", width - SW + 10, 8, 11, new Color(120, 0, 0, 255));
+                        Raylib.DrawRectangle(width - SW, 2, SW, 1, new Color(120, 20, 20, 60));
                         int enw2 = Raylib.MeasureText(activeBattleNode?.Name ?? "???", 11);
                         Raylib.DrawText(activeBattleNode?.Name ?? "???", width - SW + (SW - enw2) / 2, 8, 11, px8Red);
-                        Raylib.DrawText($"HP {bs.Enemy.Hp}/{bs.Enemy.MaxHp}", width - SW + 8, 22, 13, new Color(255, 80, 80, 255));
-                        DrawBar(width - SW + 8, 38, SW - 22, 5, (float)bs.Enemy.Hp / Math.Max(bs.Enemy.MaxHp, 1), px8Red, new Color(30, 0, 0, 255));
+                        Raylib.DrawText($"HP  {bs.Enemy.Hp} / {bs.Enemy.MaxHp}", width - SW + 8, 22, 13, new Color(255, 80, 80, 255));
+                        // HP bar with lerped fill
+                        DrawBar(width - SW + 8, 38, SW - 22, 6, (float)bs.Enemy.Hp / Math.Max(bs.Enemy.MaxHp, 1), new Color(60, 6, 6, 255), new Color(12, 2, 2, 255));
+                        DrawBar(width - SW + 8, 38, SW - 22, 6, Math.Max(0f, displayedEnemyHp) / Math.Max(bs.Enemy.MaxHp, 1), px8Red, Color.Blank);
                         int fS  = bs.Enemy.ActiveElements.GetStacks(ElementType.Fire);
                         int frS = bs.Enemy.ActiveElements.GetStacks(ElementType.Frost);
                         int biS = bs.Enemy.ActiveElements.GetStacks(ElementType.Bio);
@@ -966,28 +1013,55 @@ class Program
                             bool hasEnemy = bs.Enemy.Position == i;
                             if (hasEnemy)
                             {
+                                // Bob + pulse animation
+                                float bobYOff = MathF.Sin(enemyBobTime * 2.4f) * 4f;
+                                float pulse   = (MathF.Sin(enemyBobTime * 3.8f) + 1f) * 0.5f;
+                                Rectangle bz  = new Rectangle(enemyZone.X, enemyZone.Y + bobYOff, enemyZone.Width, enemyZone.Height);
+
+                                // Status rings
                                 if (bs.Enemy.ActiveElements.GetStacks(ElementType.Fire)  > 0)
-                                    Raylib.DrawRectangleLinesEx(new Rectangle(enemyZone.X - 2, enemyZone.Y - 2, enemyZone.Width + 4, enemyZone.Height + 4), 2, new Color(255, 140, 0, 255));
+                                    Raylib.DrawRectangleLinesEx(new Rectangle(bz.X - 2, bz.Y - 2, bz.Width + 4, bz.Height + 4), 2, new Color(255, 140, 0, 255));
                                 if (bs.Enemy.ActiveElements.GetStacks(ElementType.Frost) > 0)
-                                    Raylib.DrawRectangleLinesEx(new Rectangle(enemyZone.X - 4, enemyZone.Y - 4, enemyZone.Width + 8, enemyZone.Height + 8), 2, new Color(80, 220, 255, 255));
-                                // 8-bit enemy block: bright red fill, black X eyes
-                                Raylib.DrawRectangleRec(enemyZone, new Color(140, 0, 0, 255));
-                                Raylib.DrawRectangleLinesEx(enemyZone, 2, px8Red);
-                                int ecx8 = (int)(enemyZone.X + enemyZone.Width / 2);
-                                int ecy8 = (int)(enemyZone.Y + enemyZone.Height / 2);
-                                // Eyes
-                                Raylib.DrawRectangle(ecx8 - 14, ecy8 - 8, 8, 8, new Color(0, 0, 0, 255));
-                                Raylib.DrawRectangle(ecx8 + 6,  ecy8 - 8, 8, 8, new Color(0, 0, 0, 255));
-                                // Mouth
-                                Raylib.DrawRectangle(ecx8 - 10, ecy8 + 4, 20, 4, new Color(0, 0, 0, 255));
+                                    Raylib.DrawRectangleLinesEx(new Rectangle(bz.X - 4, bz.Y - 4, bz.Width + 8, bz.Height + 8), 2, new Color(80, 220, 255, 255));
+
+                                // Body
+                                Raylib.DrawRectangleRec(bz, new Color(90, 5, 5, 255));
+                                // Scanlines
+                                for (int sy2 = (int)bz.Y + 1; sy2 < bz.Y + bz.Height - 1; sy2 += 3)
+                                    Raylib.DrawLine((int)bz.X + 1, sy2, (int)(bz.X + bz.Width) - 1, sy2, new Color(0, 0, 0, 45));
+                                // Pulsing border
+                                int glB = 60 + (int)(pulse * 90);
+                                Raylib.DrawRectangleLinesEx(bz, 2, px8Red);
+                                Raylib.DrawRectangleLinesEx(new Rectangle(bz.X - 1, bz.Y - 1, bz.Width + 2, bz.Height + 2), 1, new Color(255, 80, 80, glB));
+
+                                // Face
+                                int ecx8 = (int)(bz.X + bz.Width * 0.5f);
+                                int ecy8 = (int)(bz.Y + bz.Height * 0.38f);
+                                int eyeB = 175 + (int)(pulse * 80);
+                                // Glowing eyes
+                                Raylib.DrawCircleV(new Vector2(ecx8 - 11, ecy8), 7f, new Color(255, eyeB, 15, 255));
+                                Raylib.DrawCircleV(new Vector2(ecx8 + 11, ecy8), 7f, new Color(255, eyeB, 15, 255));
+                                Raylib.DrawCircleV(new Vector2(ecx8 - 11, ecy8), 3f, new Color(0, 0, 0, 255));
+                                Raylib.DrawCircleV(new Vector2(ecx8 + 11, ecy8), 3f, new Color(0, 0, 0, 255));
+                                // Visor / mouth bar
+                                int visA = 140 + (int)(pulse * 70);
+                                Raylib.DrawRectangle(ecx8 - 17, ecy8 + 12, 34, 5, new Color(255, 55, 55, visA));
+                                Raylib.DrawRectangleLinesEx(new Rectangle(ecx8 - 17, ecy8 + 12, 34, 5), 1, new Color(255, 130, 130, 190));
+                                // Corner tech brackets
+                                int bsz2 = 5;
+                                Raylib.DrawLine((int)bz.X + 2, (int)bz.Y + 2, (int)bz.X + 2 + bsz2, (int)bz.Y + 2, px8Red);
+                                Raylib.DrawLine((int)bz.X + 2, (int)bz.Y + 2, (int)bz.X + 2, (int)bz.Y + 2 + bsz2, px8Red);
+                                Raylib.DrawLine((int)(bz.X + bz.Width) - 2, (int)bz.Y + 2, (int)(bz.X + bz.Width) - 2 - bsz2, (int)bz.Y + 2, px8Red);
+                                Raylib.DrawLine((int)(bz.X + bz.Width) - 2, (int)bz.Y + 2, (int)(bz.X + bz.Width) - 2, (int)bz.Y + 2 + bsz2, px8Red);
+
                                 int ehpW2 = Raylib.MeasureText($"{bs.Enemy.Hp}", 11);
-                                Raylib.DrawText($"{bs.Enemy.Hp}", ecx8 - ehpW2 / 2, (int)(enemyZone.Y + enemyZone.Height - 14), 11, px8Yel);
+                                Raylib.DrawText($"{bs.Enemy.Hp}", ecx8 - ehpW2 / 2, (int)(bz.Y + bz.Height - 14), 11, px8Yel);
                                 if (enemyFlashTimer > 0)
                                 {
                                     byte fa = (byte)Math.Min(200, (int)(enemyFlashTimer * 5 * 255));
-                                    Raylib.DrawRectangleRec(enemyZone, new Color((byte)255, (byte)255, (byte)255, fa));
+                                    Raylib.DrawRectangleRec(bz, new Color((byte)255, (byte)255, (byte)255, fa));
                                 }
-                                enemyScreenPos = new Vector2(enemyZone.X + enemyZone.Width / 2f, enemyZone.Y + enemyZone.Height / 2f);
+                                enemyScreenPos = new Vector2(bz.X + bz.Width / 2f, bz.Y + bz.Height / 2f);
                             }
                             else
                             {
@@ -1112,7 +1186,8 @@ class Program
                         // Header (0-54)
                         Raylib.DrawRectangle(0, 0, width, 54, new Color(22, 15, 8, 255));
                         Raylib.DrawLine(0, 54, width, 54, new Color(105, 78, 42, 180));
-                        DrawBar(12, 14, 200, 10, (float)bs.Player.Hp / Math.Max(bs.Player.MaxHp, 1), new Color(60, 200, 80, 255), new Color(22, 30, 18, 255));
+                        DrawBar(12, 14, 200, 10, (float)bs.Player.Hp / Math.Max(bs.Player.MaxHp, 1), new Color(20, 80, 30, 255), new Color(22, 30, 18, 255));
+                        DrawBar(12, 14, 200, 10, Math.Max(0f, displayedPlayerHp) / Math.Max(bs.Player.MaxHp, 1), new Color(60, 200, 80, 255), Color.Blank);
                         int hpFW = Raylib.MeasureText($"{bs.Player.Hp}/{bs.Player.MaxHp}", 12);
                         Raylib.DrawText($"{bs.Player.Hp}/{bs.Player.MaxHp}", 12 + 100 - hpFW / 2, 28, 12, fpText);
                         Raylib.DrawText($"NRG {bs.Player.Energy}", 220, 14, 13, new Color(80, 185, 235, 255));
@@ -1120,7 +1195,8 @@ class Program
                         // Header (0-54px)
                         Raylib.DrawRectangle(0, 0, width, 54, new Color(22, 15, 8, 255));
                         Raylib.DrawLine(0, 54, width, 54, new Color(105, 78, 42, 180));
-                        DrawBar(12, 10, 180, 9, (float)bs.Player.Hp / Math.Max(bs.Player.MaxHp, 1), new Color(60, 200, 80, 255), new Color(22, 30, 18, 255));
+                        DrawBar(12, 10, 180, 9, (float)bs.Player.Hp / Math.Max(bs.Player.MaxHp, 1), new Color(20, 80, 30, 255), new Color(22, 30, 18, 255));
+                        DrawBar(12, 10, 180, 9, Math.Max(0f, displayedPlayerHp) / Math.Max(bs.Player.MaxHp, 1), new Color(60, 200, 80, 255), Color.Blank);
                         int fpHpFW = Raylib.MeasureText($"{bs.Player.Hp}/{bs.Player.MaxHp}", 11);
                         Raylib.DrawText($"{bs.Player.Hp}/{bs.Player.MaxHp}", 12 + 90 - fpHpFW / 2, 23, 11, fpText);
                         Raylib.DrawText($"NRG {bs.Player.Energy}", 200, 8, 12, new Color(80, 185, 235, 255));
@@ -1146,7 +1222,8 @@ class Program
                         string eName = activeBattleNode?.Name ?? "Enemy";
                         int eNW = Raylib.MeasureText(eName, 15);
                         Raylib.DrawText(eName, width / 2 - eNW / 2, 66, 15, new Color(200, 85, 75, 255));
-                        DrawBar(width / 2 - 180, 88, 360, 9, (float)bs.Enemy.Hp / Math.Max(bs.Enemy.MaxHp, 1), new Color(200, 55, 55, 255), new Color(28, 22, 18, 255));
+                        DrawBar(width / 2 - 180, 88, 360, 9, (float)bs.Enemy.Hp / Math.Max(bs.Enemy.MaxHp, 1), new Color(80, 20, 20, 255), new Color(28, 22, 18, 255));
+                        DrawBar(width / 2 - 180, 88, 360, 9, Math.Max(0f, displayedEnemyHp) / Math.Max(bs.Enemy.MaxHp, 1), new Color(200, 55, 55, 255), Color.Blank);
                         int eHpW = Raylib.MeasureText($"{bs.Enemy.Hp} / {bs.Enemy.MaxHp}", 11);
                         Raylib.DrawText($"{bs.Enemy.Hp} / {bs.Enemy.MaxHp}", width / 2 - eHpW / 2, 101, 11, fpText);
                         var (intentStr, intentDmg, intentLane) = TurnManager.GetEnemyIntent(bs);
@@ -1475,6 +1552,15 @@ class Program
                         Raylib.DrawLineEx(new Vector2(width / 2 - bnW / 2f, height / 2 + 24f), new Vector2(width / 2 + bnW / 2f, height / 2 + 24f), 2f, bnCol);
                     }
 
+                    // Keybinding hint bar
+                    if (bs.Phase == TurnPhase.PlayerTurn && !isPaused && !showBurnPile)
+                    {
+                        string hint = "ENTER  end turn    Q  ability    P  pause    SPACE  execute";
+                        int hintPx = Raylib.MeasureText(hint, 11);
+                        Raylib.DrawRectangle(width / 2 - hintPx / 2 - 10, height - 22, hintPx + 20, 18, new Color(0, 0, 0, 130));
+                        Raylib.DrawText(hint, width / 2 - hintPx / 2, height - 20, 11, new Color(90, 95, 110, 200));
+                    }
+
                     // Win/Lose overlay (both themes)
                     if (bs.Phase == TurnPhase.Finished)
                     {
@@ -1498,23 +1584,34 @@ class Program
                             string winStats = $"Turns: {bs.EnemyTurnCount}   Cards played: {bs.CardsPlayedTotal}   HP left: {bs.Player.Hp}/{bs.Player.MaxHp}";
                             int winStatsW = Raylib.MeasureText(winStats, 12);
                             Raylib.DrawText(winStats, width / 2 - winStatsW / 2, height / 2 + 26, 12, new Color(120, 148, 120, 255));
-                            if (DrawButton(new Rectangle(width / 2 - 130, height / 2 + 52, 260, 44), "CHOOSE REWARD →", new Color(38, 72, 42, 255), new Color(55, 108, 62, 255)))
+                            bool isBossVictory = activeBattleNode?.Type == NodeType.CombatBoss;
+                            string rewardBtnLabel = isBossVictory ? "COMPLETE RUN →" : "CHOOSE REWARD →";
+                            if (DrawButton(new Rectangle(width / 2 - 130, height / 2 + 52, 260, 44), rewardBtnLabel, new Color(38, 72, 42, 255), new Color(55, 108, 62, 255)))
                             {
                                 profile.Gold += goldReward;
+                                profile.PlayerHp = bs.Player.Hp;
                                 if (activeBattleNode != null)
                                 {
                                     activeBattleNode.Completed = true;
                                     completedNodes.Add(activeBattleNode.Id);
                                 }
-                                // Generate 3 distinct random card options
-                                var pool = CardLibrary.GetAll().ToList();
-                                for (int ri = pool.Count - 1; ri > 0; ri--)
+                                if (isBossVictory)
                                 {
-                                    int rj = rewardRng.Next(ri + 1);
-                                    (pool[ri], pool[rj]) = (pool[rj], pool[ri]);
+                                    SaveGame(profile, completedNodes);
+                                    scene = GameScene.CampaignVictory;
                                 }
-                                rewardOptions = pool.Take(3).ToList();
-                                scene = GameScene.RewardChoice;
+                                else
+                                {
+                                    // Generate 3 distinct random card options
+                                    var pool = CardLibrary.GetAll().ToList();
+                                    for (int ri = pool.Count - 1; ri > 0; ri--)
+                                    {
+                                        int rj = rewardRng.Next(ri + 1);
+                                        (pool[ri], pool[rj]) = (pool[rj], pool[ri]);
+                                    }
+                                    rewardOptions = pool.Take(3).ToList();
+                                    scene = GameScene.RewardChoice;
+                                }
                             }
                         }
                         else
@@ -1540,6 +1637,7 @@ class Program
                                 {
                                     profile.Gold = 150;
                                     profile.SkillPoints = 8;
+                                    profile.PlayerHp = 0;
                                     completedNodes.Clear();
                                     foreach (var cn in campaignNodes) cn.Completed = false;
                                     SaveGame(profile, completedNodes);
@@ -1867,6 +1965,40 @@ class Program
                     {
                         SaveGame(profile, completedNodes);
                         scene = GameScene.CampaignMap;
+                    }
+                    break;
+                }
+
+                case GameScene.CampaignVictory:
+                {
+                    Raylib.DrawRectangle(0, 0, width, height, new Color(6, 10, 6, 255));
+                    // Starfield
+                    for (int si = 0; si < 120; si++)
+                    {
+                        int sx = (si * 137 + 41) % width;
+                        int sy = (si * 179 + 83) % height;
+                        int sa = 100 + si % 155;
+                        Raylib.DrawPixel(sx, sy, new Color(200, 220, 200, sa));
+                    }
+                    int vcW = Raylib.MeasureText("RUN COMPLETE", 52);
+                    Raylib.DrawText("RUN COMPLETE", width / 2 - vcW / 2, height / 2 - 140, 52, Color.Gold);
+                    int vcSW = Raylib.MeasureText("THE CATALYST SINGULARITY DEFEATED", 20);
+                    Raylib.DrawText("THE CATALYST SINGULARITY DEFEATED", width / 2 - vcSW / 2, height / 2 - 76, 20, new Color(188, 220, 188, 255));
+                    Raylib.DrawLineEx(new Vector2(width / 2 - 220f, height / 2 - 46f), new Vector2(width / 2 + 220f, height / 2 - 46f), 1.5f, new Color(80, 160, 80, 160));
+                    int vcMaxHp = 50 + profile.MaxHpBonus;
+                    int vcHpLeft = profile.PlayerHp > 0 ? profile.PlayerHp : vcMaxHp;
+                    string vcStats = $"HP remaining: {vcHpLeft}/{vcMaxHp}   Gold: {profile.Gold} G   Cards collected: {profile.TotalCollection.Count}";
+                    int vcStW = Raylib.MeasureText(vcStats, 14);
+                    Raylib.DrawText(vcStats, width / 2 - vcStW / 2, height / 2 - 26, 14, new Color(140, 185, 140, 255));
+                    if (DrawButton(new Rectangle(width / 2 - 150, height / 2 + 14, 300, 52), "START NEW RUN", new Color(28, 62, 28, 255), new Color(42, 98, 42, 255)))
+                    {
+                        profile.Gold = 150;
+                        profile.SkillPoints = 8;
+                        profile.PlayerHp = 0;
+                        completedNodes.Clear();
+                        foreach (var cn in campaignNodes) cn.Completed = false;
+                        SaveGame(profile, completedNodes);
+                        scene = GameScene.TitleScreen;
                     }
                     break;
                 }
