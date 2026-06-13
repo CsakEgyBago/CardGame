@@ -76,5 +76,17 @@ namespace CardGamePrototype.Core
         }
 
         public void Restart() => NewBattle();
+
+        public void InitPractice(int enemyHp = 100, string variant = "standard", List<CardDefinition>? starterDeck = null)
+        {
+            var player = new Player(80, 0);
+            var enemy  = new Entity("Training Dummy", enemyHp, 2);
+            State = new BattleState(player, enemy, Environment.TickCount);
+            State.EnemyVariant = variant;
+            State.PlayerEnergyBonus = 6; // 10 energy per turn in practice
+            if (starterDeck != null)
+                State.DrawPile.AddRange(starterDeck);
+            _turnManager.StartPlayerTurn(State);
+        }
     }
 }

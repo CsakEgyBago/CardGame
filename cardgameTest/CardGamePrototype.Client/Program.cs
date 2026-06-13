@@ -5,7 +5,7 @@ using CardGamePrototype.Core;
 
 namespace CardGamePrototype.Client;
 
-public enum GameScene { TitleScreen, ModeSelect, CampaignMap, BattleView, MarketShop, DeckBuilder, RewardChoice, CampaignVictory }
+public enum GameScene { TitleScreen, ModeSelect, CampaignMap, BattleView, MarketShop, DeckBuilder, RewardChoice, CampaignVictory, Practice }
 public enum GameTheme { SciFi, Fantasy }
 public enum NodeType { CombatMinion, CombatElite, CombatBoss, Rest }
 
@@ -161,6 +161,30 @@ class Program
         Raylib.DrawCircleLines((int)badge.X, (int)badge.Y, 12, new Color(68, 132, 238, 200));
         int costW = Raylib.MeasureText(cost.ToString(), 13);
         Raylib.DrawText(cost.ToString(), (int)(badge.X - costW / 2), (int)(badge.Y - 7), 13, Color.White);
+    }
+
+    // Returns (accentColor, typeBadge) based on card mechanics — gives visual identity beyond element tinting
+    static (Color accent, string badge) CardTypeInfo(CardDefinition card)
+    {
+        bool isSacrifice = card.CatalystEffects.Any(e => e.Type == EffectType.SacrificeSelf)
+                        || card.ExecutionerEffects.Any(e => e.Type == EffectType.SacrificeSelf);
+        bool isField  = card.CatalystEffects.Any(e => e.Type == EffectType.SetFieldEffect)
+                     || card.ExecutionerEffects.Any(e => e.Type == EffectType.SetFieldEffect);
+        bool isBuff   = card.CatalystEffects.Any(e => e.Type is EffectType.BuffPlayerUnits or EffectType.AddArmorAllUnits)
+                     || card.ExecutionerEffects.Any(e => e.Type is EffectType.BuffPlayerUnits or EffectType.AddArmorAllUnits);
+        bool isDebuff = card.CatalystEffects.Any(e => e.Type is EffectType.DebuffEnemyUnits or EffectType.DamageAllEnemyMinions or EffectType.StunAllEnemies)
+                     || card.ExecutionerEffects.Any(e => e.Type is EffectType.DebuffEnemyUnits or EffectType.DamageAllEnemyMinions or EffectType.StunAllEnemies);
+        if (isSacrifice) return (new Color(200, 15, 15, 255),  "RITUAL");
+        if (isField)     return (new Color(30, 100, 220, 255), "FIELD");
+        if (isBuff)      return (new Color(20, 200, 90, 255),  "BUFF");
+        if (isDebuff)    return (new Color(220, 120, 20, 255), "DEBUFF");
+        return card.CardType switch
+        {
+            CardType.Construct => (CardColorFromName(card.Name), "UNIT"),
+            CardType.Strike    => (new Color(220, 80, 30, 255), "STRIKE"),
+            CardType.Reaction  => (new Color(80, 140, 220, 255), "REACT"),
+            _                  => (new Color(150, 70, 230, 255), "SPELL"),
+        };
     }
 
     static Color CardColorFromName(string name) => name switch
@@ -402,21 +426,21 @@ class Program
         // Branching campaign map
         List<CampaignNode> campaignNodes = new List<CampaignNode>
         {
-            new CampaignNode { Id=0,  Name="Catalyst Entrance",        Type=NodeType.CombatMinion, EnemyHp=65,  EnemyDefaultPosition=2, MapX=0.05f, MapY=0.50f, ChildIds=new(){1,2,3} },
-            new CampaignNode { Id=1,  Name="Upper Flank",              Type=NodeType.CombatMinion, EnemyHp=75,  EnemyDefaultPosition=0, MapX=0.18f, MapY=0.14f, ChildIds=new(){4} },
-            new CampaignNode { Id=2,  Name="Core Link",                Type=NodeType.CombatMinion, EnemyHp=80,  EnemyDefaultPosition=2, MapX=0.18f, MapY=0.50f, ChildIds=new(){4,5} },
-            new CampaignNode { Id=3,  Name="Lower Grid",               Type=NodeType.CombatMinion, EnemyHp=75,  EnemyDefaultPosition=4, MapX=0.18f, MapY=0.86f, ChildIds=new(){5} },
-            new CampaignNode { Id=4,  Name="Pylon Cluster",            Type=NodeType.CombatMinion, EnemyHp=95,  EnemyDefaultPosition=1, MapX=0.31f, MapY=0.27f, ChildIds=new(){6} },
+            new CampaignNode { Id=0,  Name="Catalyst Entrance",        Type=NodeType.CombatMinion, EnemyHp=50,  EnemyDefaultPosition=2, MapX=0.05f, MapY=0.50f, ChildIds=new(){1,2,3} },
+            new CampaignNode { Id=1,  Name="Upper Flank",              Type=NodeType.CombatMinion, EnemyHp=55,  EnemyDefaultPosition=0, MapX=0.18f, MapY=0.14f, ChildIds=new(){4} },
+            new CampaignNode { Id=2,  Name="Core Link",                Type=NodeType.CombatMinion, EnemyHp=60,  EnemyDefaultPosition=2, MapX=0.18f, MapY=0.50f, ChildIds=new(){4,5} },
+            new CampaignNode { Id=3,  Name="Lower Grid",               Type=NodeType.CombatMinion, EnemyHp=55,  EnemyDefaultPosition=4, MapX=0.18f, MapY=0.86f, ChildIds=new(){5} },
+            new CampaignNode { Id=4,  Name="Pylon Cluster",            Type=NodeType.CombatMinion, EnemyHp=70,  EnemyDefaultPosition=1, MapX=0.31f, MapY=0.27f, ChildIds=new(){6} },
             new CampaignNode { Id=5,  Name="Field Camp",               Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.31f, MapY=0.73f, ChildIds=new(){6,7} },
-            new CampaignNode { Id=6,  Name="First Warden",             Type=NodeType.CombatElite,  EnemyHp=130, EnemyDefaultPosition=3, MapX=0.44f, MapY=0.40f, ChildIds=new(){7,8} },
-            new CampaignNode { Id=7,  Name="Void Corridor",            Type=NodeType.CombatMinion, EnemyHp=102, EnemyDefaultPosition=2, MapX=0.55f, MapY=0.68f, ChildIds=new(){9,10} },
+            new CampaignNode { Id=6,  Name="First Warden",             Type=NodeType.CombatElite,  EnemyHp=90,  EnemyDefaultPosition=3, MapX=0.44f, MapY=0.40f, ChildIds=new(){7,8} },
+            new CampaignNode { Id=7,  Name="Void Corridor",            Type=NodeType.CombatMinion, EnemyHp=75,  EnemyDefaultPosition=2, MapX=0.55f, MapY=0.68f, ChildIds=new(){9,10} },
             new CampaignNode { Id=8,  Name="Relay Station",            Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.55f, MapY=0.20f, ChildIds=new(){9} },
-            new CampaignNode { Id=9,  Name="Deep Pylon",               Type=NodeType.CombatMinion, EnemyHp=112, EnemyDefaultPosition=1, MapX=0.66f, MapY=0.35f, ChildIds=new(){11} },
+            new CampaignNode { Id=9,  Name="Deep Pylon",               Type=NodeType.CombatMinion, EnemyHp=80,  EnemyDefaultPosition=1, MapX=0.66f, MapY=0.35f, ChildIds=new(){11} },
             new CampaignNode { Id=10, Name="Bunker",                   Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.66f, MapY=0.78f, ChildIds=new(){11} },
-            new CampaignNode { Id=11, Name="Second Warden",            Type=NodeType.CombatElite,  EnemyHp=165, EnemyDefaultPosition=3, MapX=0.78f, MapY=0.50f, ChildIds=new(){12,13} },
-            new CampaignNode { Id=12, Name="Final Push",               Type=NodeType.CombatMinion, EnemyHp=122, EnemyDefaultPosition=2, MapX=0.87f, MapY=0.20f, ChildIds=new(){14} },
+            new CampaignNode { Id=11, Name="Second Warden",            Type=NodeType.CombatElite,  EnemyHp=115, EnemyDefaultPosition=3, MapX=0.78f, MapY=0.50f, ChildIds=new(){12,13} },
+            new CampaignNode { Id=12, Name="Final Push",               Type=NodeType.CombatMinion, EnemyHp=85,  EnemyDefaultPosition=2, MapX=0.87f, MapY=0.20f, ChildIds=new(){14} },
             new CampaignNode { Id=13, Name="Last Stand",               Type=NodeType.Rest,          EnemyHp=0,   EnemyDefaultPosition=0, MapX=0.87f, MapY=0.78f, ChildIds=new(){14} },
-            new CampaignNode { Id=14, Name="The Catalyst Singularity", Type=NodeType.CombatBoss,   EnemyHp=240, EnemyDefaultPosition=2, MapX=0.95f, MapY=0.50f, ChildIds=new() },
+            new CampaignNode { Id=14, Name="The Catalyst Singularity", Type=NodeType.CombatBoss,   EnemyHp=160, EnemyDefaultPosition=2, MapX=0.95f, MapY=0.50f, ChildIds=new() },
         };
         HashSet<int> completedNodes = new();
 
@@ -482,6 +506,9 @@ class Program
         float deckScrollY = 0f;
         float shopScrollY = 0f;
 
+        // Practice mode state
+        bool practiceMode = false;
+
         // Pause menu
         bool isPaused = false;
         bool showBurnPile = false;
@@ -536,6 +563,10 @@ class Program
                 else if (scene == GameScene.BattleView)
                 {
                     if (showBurnPile) showBurnPile = false;
+                }
+                else if (scene == GameScene.Practice)
+                {
+                    practiceMode = false; scene = GameScene.ModeSelect;
                 }
             }
 
@@ -621,13 +652,19 @@ class Program
                     Raylib.DrawText("Full roguelike run", (int)storyR.X + 60, (int)storyR.Y + 80, 12, new Color(85, 148, 100, 255));
                     if (storyHov && Raylib.IsMouseButtonPressed(MouseButton.Left)) scene = GameScene.CampaignMap;
 
-                    // Arcade mode — locked
+                    // Practice mode
                     Rectangle arcR = new(width / 2 + 40, height / 2 - 70, 280, 130);
-                    Raylib.DrawRectangleRounded(arcR, 0.1f, 6, new Color(24, 24, 30, 255));
-                    Raylib.DrawRectangleRoundedLinesEx(arcR, 0.1f, 6, 1.5f, new Color(46, 48, 60, 255));
-                    Raylib.DrawText("ARCADE MODE", (int)arcR.X + 48, (int)arcR.Y + 30, 22, new Color(72, 74, 90, 255));
-                    Raylib.DrawText("Coming soon", (int)arcR.X + 78, (int)arcR.Y + 60, 14, new Color(85, 48, 48, 255));
-                    Raylib.DrawText("LOCKED IN ALPHA", (int)arcR.X + 54, (int)arcR.Y + 80, 12, new Color(110, 50, 50, 255));
+                    bool practHov = Raylib.CheckCollisionPointRec(mouse, arcR);
+                    Raylib.DrawRectangleRounded(arcR, 0.1f, 6, practHov ? new Color(60, 50, 90, 255) : new Color(36, 30, 60, 255));
+                    Raylib.DrawRectangleRoundedLinesEx(arcR, 0.1f, 6, 1.5f, new Color(120, 80, 220, 160));
+                    Raylib.DrawText("PRACTICE MODE", (int)arcR.X + 30, (int)arcR.Y + 30, 22, Color.White);
+                    Raylib.DrawText("Sandbox battle", (int)arcR.X + 60, (int)arcR.Y + 60, 14, new Color(160, 130, 240, 255));
+                    Raylib.DrawText("Any card, any config", (int)arcR.X + 44, (int)arcR.Y + 80, 12, new Color(110, 90, 180, 255));
+                    if (practHov && Raylib.IsMouseButtonPressed(MouseButton.Left))
+                    {
+                        practiceMode = true;
+                        scene = GameScene.Practice;
+                    }
                     break;
 
                 case GameScene.CampaignMap:
@@ -857,15 +894,39 @@ class Program
                         bool hitPlayer = bs.DamageLog.Any(e => e.Amount < 0);
                         if (hitEnemy)  { enemyFlashTimer = 0.20f; shakeTimer = 0.18f; Raylib.PlaySound(hitSounds[sfxRng.Next(4)]); }
                         if (hitPlayer) { shakeTimer = 0.25f; Raylib.PlaySound(hitSounds[sfxRng.Next(4)]); }
+
+                        // Grid layout constants (must match SciFi view)
+                        const int dmgSW = 220;
+                        int dmgGcx = dmgSW, dmgGcw = width - dmgSW * 2;
+                        int dmgFTop = 70, dmgFBot = height - 100;
+                        int dmgMidY = dmgFTop + (dmgFBot - dmgFTop) / 2;
+
                         foreach (var ev in bs.DamageLog)
                         {
-                            bool isEnemyHit = ev.Amount > 0;
-                            Color fc = isEnemyHit ? new Color(255, 110, 50, 255) : new Color(215, 50, 50, 255);
-                            if (ev.Tag == "enemy_burn") fc = new Color(255, 165, 30, 255);
-                            if (ev.Tag == "enemy_bio")  fc = new Color(80, 210, 60, 255);
-                            Vector2 sp = ev.Tag == "player"
-                                ? new Vector2(width * 0.12f + rewardRng.Next(-18, 18), height * 0.52f)
-                                : new Vector2(enemyScreenPos.X + rewardRng.Next(-22, 22), enemyScreenPos.Y - 8);
+                            // Flash the player board slot when it takes damage
+                            if (ev.Tag.StartsWith("lane_") && int.TryParse(ev.Tag[5..], out int dLane) && dLane is >= 0 and < 5)
+                                slotFlashTimers[dLane] = 0.28f;
+
+                            // Choose color by event type
+                            Color fc;
+                            if (ev.Tag == "enemy_burn")       fc = new Color(255, 165, 30, 255);
+                            else if (ev.Tag == "enemy_bio")   fc = new Color(80, 210, 60, 255);
+                            else if (ev.Tag == "enemy_lightning") fc = new Color(200, 150, 255, 255);
+                            else if (ev.Amount < 0)           fc = new Color(220, 50, 50, 255);   // player/unit taking damage
+                            else                              fc = new Color(255, 110, 50, 255);   // dealing damage to enemy
+
+                            // Position floater at the correct location
+                            Vector2 sp;
+                            if (ev.Tag == "player")
+                                sp = new Vector2(dmgSW / 2f, height * 0.46f);
+                            else if (ev.Tag.StartsWith("lane_") && int.TryParse(ev.Tag[5..], out int pLane))
+                                sp = new Vector2(dmgGcx + (pLane + 0.5f) * dmgGcw / 5f, dmgMidY + (dmgFBot - dmgMidY) * 0.45f);
+                            else if (ev.Tag.StartsWith("enemy_lane_") && int.TryParse(ev.Tag[11..], out int eLane))
+                                sp = new Vector2(dmgGcx + (eLane + 0.5f) * dmgGcw / 5f, dmgFTop + (dmgMidY - dmgFTop) * 0.55f);
+                            else
+                                sp = new Vector2(enemyScreenPos.X, enemyScreenPos.Y - 8);
+
+                            sp.X += rewardRng.Next(-18, 18);
                             floatDmgs.Add(new FloatDmg { X = sp.X, Y = sp.Y, Vy = -62f,
                                 Amount = Math.Abs(ev.Amount), Life = 1.0f, Col = fc });
                         }
@@ -962,14 +1023,19 @@ class Program
                             Rectangle cr = new Rectangle(10, 74 + i * (cpH + 6), cpW, cpH);
                             var hc = bs.Hand[i];
                             bool hov8 = i == hovSF;
-                            // Card with element accent strip
-                            Color elCol = CardColorFromName(hc.Name);
-                            Raylib.DrawRectangleRec(cr, new Color((byte)(elCol.R / 10), (byte)(elCol.G / 10), (byte)(elCol.B / 10), (byte)255));
-                            Raylib.DrawRectangleLinesEx(cr, hov8 ? 2 : 1, hov8 ? px8Yel : new Color((byte)(elCol.R / 3), (byte)(elCol.G / 3), (byte)(elCol.B / 3), (byte)180));
-                            Raylib.DrawRectangle((int)cr.X + 1, (int)cr.Y + 1, (int)cr.Width - 2, 4, new Color((byte)(elCol.R / 2), (byte)(elCol.G / 2), (byte)(elCol.B / 2), (byte)200));
+                            var (typeAccent, typeBadge) = CardTypeInfo(hc);
+                            // Background tinted by type
+                            Raylib.DrawRectangleRec(cr, new Color((byte)(typeAccent.R / 12), (byte)(typeAccent.G / 12), (byte)(typeAccent.B / 12), (byte)255));
+                            Raylib.DrawRectangleLinesEx(cr, hov8 ? 2 : 1, hov8 ? px8Yel : new Color((byte)(typeAccent.R / 3), (byte)(typeAccent.G / 3), (byte)(typeAccent.B / 3), (byte)200));
+                            // Header bar in type color
+                            Raylib.DrawRectangle((int)cr.X + 1, (int)cr.Y + 1, (int)cr.Width - 2, 5, new Color((byte)(typeAccent.R / 2), (byte)(typeAccent.G / 2), (byte)(typeAccent.B / 2), (byte)200));
                             Raylib.DrawText(hc.Name, (int)cr.X + 6, (int)cr.Y + 8, 11, hov8 ? px8Yel : Color.White);
-                            Raylib.DrawLine((int)cr.X, (int)cr.Y + 23, (int)(cr.X + cr.Width), (int)cr.Y + 23, new Color((byte)(elCol.R / 5), (byte)(elCol.G / 5), (byte)(elCol.B / 5), (byte)140));
-                            Raylib.DrawText(hc.Description, (int)cr.X + 6, (int)cr.Y + 27, 9, new Color(155, 162, 175, 255));
+                            // Type badge (top-left, tiny)
+                            int tbW = Raylib.MeasureText(typeBadge, 8);
+                            Raylib.DrawRectangle((int)cr.X + 6, (int)cr.Y + 22, tbW + 6, 12, new Color((byte)(typeAccent.R/4), (byte)(typeAccent.G/4), (byte)(typeAccent.B/4), (byte)220));
+                            Raylib.DrawText(typeBadge, (int)cr.X + 8, (int)cr.Y + 24, 8, typeAccent);
+                            Raylib.DrawLine((int)cr.X, (int)cr.Y + 35, (int)(cr.X + cr.Width), (int)cr.Y + 35, new Color(30, 30, 30, 140));
+                            Raylib.DrawText(hc.Description, (int)cr.X + 6, (int)cr.Y + 38, 9, new Color(155, 162, 175, 255));
                             Raylib.DrawCircleV(new Vector2(cr.X + cr.Width - 14, cr.Y + 14), 11f, new Color(0, 40, 90, 255));
                             Raylib.DrawCircleLines((int)(cr.X + cr.Width - 14), (int)(cr.Y + 14), 11, new Color(40, 90, 200, 160));
                             int c8W = Raylib.MeasureText($"{hc.Cost}", 11);
@@ -1180,6 +1246,17 @@ class Program
                         Raylib.DrawText("▲ ENEMY ZONE", gcx + (gcw - ezLW) / 2, fTop + 4, 10, new Color(200, 0, 0, 180));
                         int dzLW = Raylib.MeasureText("▼ DEPLOY ZONE", 10);
                         Raylib.DrawText("▼ DEPLOY ZONE", gcx + (gcw - dzLW) / 2, fBot - 16, 10, new Color(0, 180, 0, 180));
+                        // Combat hint: instruct player to select a unit first, or show attack hint
+                        if (!sfUnitReady && bs.PlayerBoard.Any(s => s.IsOccupied && s.TurnsOnBoard > 0 && !s.Occupant!.HasAttackedThisTurn))
+                        {
+                            int hintW = Raylib.MeasureText("← SELECT A UNIT TO ATTACK", 10);
+                            Raylib.DrawText("← SELECT A UNIT TO ATTACK", gcx + (gcw - hintW) / 2, midY - 14, 10, new Color(180, 180, 60, 160));
+                        }
+                        else if (sfUnitReady)
+                        {
+                            int hintW = Raylib.MeasureText("CLICK ENEMY MINION OR HERO", 10);
+                            Raylib.DrawText("CLICK ENEMY MINION OR HERO", gcx + (gcw - hintW) / 2, midY - 14, 10, new Color(60, 220, 180, 160));
+                        }
 
                         // Fix enemy screen pos at top-center of grid for damage floaters
                         enemyScreenPos = new Vector2(gcx + gcw / 2f, fTop + (midY - fTop) / 2f);
@@ -1910,7 +1987,12 @@ class Program
                                     var pool = CardLibrary.GetAll()
                                         .Where(c => !profile.TotalCollection.Any(t => t.Id == c.Id))
                                         .ToList();
-                                    if (pool.Count < 3) pool = CardLibrary.GetAll().ToList();
+                                    // Fallback: allow duplicates only if pool is truly exhausted, still deduplicated
+                                    if (pool.Count < 3)
+                                    {
+                                        var allPool = CardLibrary.GetAll().GroupBy(c => c.Id).Select(g => g.First()).ToList();
+                                        pool = allPool.Where(c => pool.All(p => p.Id != c.Id)).Concat(pool).Take(20).ToList();
+                                    }
                                     for (int ri = pool.Count - 1; ri > 0; ri--)
                                     {
                                         int rj = rewardRng.Next(ri + 1);
@@ -2317,7 +2399,9 @@ class Program
 
                         if (rcHov && Raylib.IsMouseButtonPressed(MouseButton.Left))
                         {
-                            profile.TotalCollection.Add(rc);
+                            // Prevent adding exact duplicates (same Id)
+                            if (!profile.TotalCollection.Any(c => c.Id == rc.Id))
+                                profile.TotalCollection.Add(rc);
                             Raylib.PlaySound(ui2Sound);
                             SaveGame(profile, completedNodes);
                             scene = GameScene.CampaignMap;
@@ -2370,6 +2454,48 @@ class Program
                         SaveGame(profile, completedNodes);
                         scene = GameScene.TitleScreen;
                     }
+                    break;
+                }
+
+                case GameScene.Practice:
+                {
+                    // Initialize on entry (practiceMode flag set by ModeSelect)
+                    if (practiceMode)
+                    {
+                        activeBattleNode = null;
+                        var allPracticeCards = CardLibrary.GetAll().ToList();
+                        for (int ri2 = allPracticeCards.Count - 1; ri2 > 0; ri2--)
+                        { int rj2 = rewardRng.Next(ri2 + 1); (allPracticeCards[ri2], allPracticeCards[rj2]) = (allPracticeCards[rj2], allPracticeCards[ri2]); }
+                        battleService.InitPractice(100, "standard", allPracticeCards);
+                        displayedEnemyHp = -1; displayedPlayerHp = -1;
+                        Array.Clear(slotFlashTimers, 0, 5);
+                        floatDmgs.Clear();
+                        isPaused = false;
+                        practiceMode = false;
+                    }
+
+                    Raylib.DrawRectangle(0, 0, width, height, new Color(4, 4, 12, 255));
+
+                    // Practice header banner
+                    Raylib.DrawRectangle(0, 0, width, 32, new Color(30, 10, 60, 255));
+                    Raylib.DrawRectangle(0, 32, width, 2, new Color(120, 80, 220, 255));
+                    int phW = Raylib.MeasureText("PRACTICE  —  All cards in deck  —  [R] Reset  —  [ESC] Exit", 13);
+                    Raylib.DrawText("PRACTICE  —  All cards in deck  —  [R] Reset  —  [ESC] Exit", width / 2 - phW / 2, 9, 13, new Color(160, 120, 255, 255));
+
+                    var pbs = battleService.State;
+
+                    // R = full reset
+                    if (Raylib.IsKeyPressed(KeyboardKey.R))
+                    {
+                        var allPracticeCards2 = CardLibrary.GetAll().ToList();
+                        for (int ri3 = allPracticeCards2.Count - 1; ri3 > 0; ri3--)
+                        { int rj3 = rewardRng.Next(ri3 + 1); (allPracticeCards2[ri3], allPracticeCards2[rj3]) = (allPracticeCards2[rj3], allPracticeCards2[ri3]); }
+                        battleService.InitPractice(100, "standard", allPracticeCards2);
+                        displayedEnemyHp = -1; displayedPlayerHp = -1;
+                        Array.Clear(slotFlashTimers, 0, 5); floatDmgs.Clear();
+                        pbs = battleService.State;
+                    }
+
                     break;
                 }
             }

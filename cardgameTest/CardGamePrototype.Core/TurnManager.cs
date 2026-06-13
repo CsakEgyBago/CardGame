@@ -226,16 +226,19 @@ namespace CardGamePrototype.Core
             int minionCount = state.EnemyBoard.Count(s => s.IsOccupied);
             int handCount   = state.EnemyHand.Count;
             int energy = state.EnemyVariant switch {
-                "boss"  => 5 + state.EnemyTurnCount / 3,
-                "elite" => 4 + state.EnemyTurnCount / 4,
-                _       => 3 + state.EnemyTurnCount / 5
+                "boss"  => 5,
+                "elite" => 3,
+                _       => 2
             };
             int frost = state.Enemy.ActiveElements.GetStacks(ElementType.Frost);
             energy = Math.Max(1, energy - frost);
+            bool willPlay = state.EnemyVariant == "standard"
+                ? (state.EnemyTurnCount + 1) % 2 == 0
+                : true;
             var affordable = state.EnemyHand.Where(c => c.Cost <= energy).ToList();
-            string playPart = affordable.Count > 0
-                ? $"Summon {affordable.First().Name}"
-                : (handCount > 0 ? "Pass (no energy)" : "Draw cards");
+            string playPart = !willPlay ? "Holds back" :
+                (affordable.Count > 0 ? $"Summon {affordable.First().Name}"
+                : (handCount > 0 ? "Pass (no energy)" : "Draw cards"));
             string atkPart = minionCount > 0 ? $"  +  {minionCount} minion{(minionCount > 1 ? "s" : "")} attack" : "";
             return $"{playPart}{atkPart}";
         }
@@ -346,18 +349,23 @@ namespace CardGamePrototype.Core
             foreach (var slot in state.EnemyBoard)
                 if (slot.IsOccupied) { slot.Occupant!.HasAttackedThisTurn = false; slot.TurnsOnBoard++; }
 
+            // Fixed energy — no scaling to prevent snowballing
             int energy = state.EnemyVariant switch {
-                "boss"  => 5 + state.EnemyTurnCount / 3,
-                "elite" => 4 + state.EnemyTurnCount / 4,
-                _       => 3 + state.EnemyTurnCount / 5
+                "boss"  => 5,
+                "elite" => 3,
+                _       => 2
             };
             energy = Math.Max(1, energy - frost);
 
-            // Draw up to 2 cards (max hand = 5)
-            DrawEnemyCards(state, 2);
+            // Draw 1 card per turn (max hand = 5)
+            DrawEnemyCards(state, 1);
 
-            // Play cards from hand (cheapest first, fills empty slots left-to-right)
-            EnemyPlayCards(state, energy);
+            // Standard enemy only plays a card every other turn (odd turns)
+            bool playsThisTurn = state.EnemyVariant == "standard"
+                ? state.EnemyTurnCount % 2 == 0
+                : true;
+            if (playsThisTurn)
+                EnemyPlayCards(state, energy);
 
             // All enemy minions attack
             EnemyMinionAttack(state, frost);
@@ -376,7 +384,9 @@ namespace CardGamePrototype.Core
         private static void EnemyPlayCards(BattleState state, int energy)
         {
             bool played = true;
-            while (played && energy > 0 && state.EnemyHand.Count > 0)
+            int playsThisTurn = 0;
+            int maxPlays = state.EnemyVariant switch { "boss" => 2, "elite" => 1, _ => 1 };
+            while (played && energy > 0 && state.EnemyHand.Count > 0 && playsThisTurn < maxPlays)
             {
                 played = false;
                 // Find cheapest affordable card
@@ -402,6 +412,7 @@ namespace CardGamePrototype.Core
                 energy -= toPlay.Cost;
                 state.EnemyHand.Remove(toPlay);
                 played = true;
+                playsThisTurn++;
             }
         }
 

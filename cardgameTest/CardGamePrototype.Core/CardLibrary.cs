@@ -89,14 +89,14 @@ namespace CardGamePrototype.Core
             c.ExecutionerEffects.Add(new EffectDefinition
             {
                 Type = EffectType.Damage,
-                Value = 6,
+                Value = 8,
                 Target = TargetType.Enemy
             });
 
             c.ExecutionerEffects.Add(new EffectDefinition
             {
                 Type = EffectType.ConditionalDamage,
-                Value = 12,
+                Value = 16,
                 Target = TargetType.Enemy,
                 ConditionElement = ElementType.Fire,
                 ConditionStacks = 1,
@@ -233,7 +233,7 @@ namespace CardGamePrototype.Core
                 MinionHp = 6, MinionAttack = 5
             };
             c.CatalystEffects.Add(new EffectDefinition { Type = EffectType.ApplyElement, Element = ElementType.Fire, Value = 2, Target = TargetType.Enemy });
-            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 8, Target = TargetType.Enemy });
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 10, Target = TargetType.Enemy });
             return c;
         }
 
@@ -273,13 +273,13 @@ namespace CardGamePrototype.Core
             var c = new CardDefinition
             {
                 Id = "phoenix_ash", Name = "Phoenix Ash",
-                Description = "Execute: 10 dmg.\nBonus 8 if Fire.",
+                Description = "Execute: 12 dmg.\nBonus 10 if Fire.",
                 Cost = 2, CardType = CardType.Strike,
                 ResolutionRole = CardResolutionRole.Executioner,
                 MinionHp = 10, MinionAttack = 3
             };
-            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 10, Target = TargetType.Enemy });
-            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.ConditionalDamage, Value = 8, Target = TargetType.Enemy, ConditionElement = ElementType.Fire, ConditionStacks = 1, ConsumeStacks = 1 });
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 12, Target = TargetType.Enemy });
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.ConditionalDamage, Value = 10, Target = TargetType.Enemy, ConditionElement = ElementType.Fire, ConditionStacks = 1, ConsumeStacks = 1 });
             return c;
         }
 
@@ -303,13 +303,13 @@ namespace CardGamePrototype.Core
             var c = new CardDefinition
             {
                 Id = "volt_strike", Name = "Volt Strike",
-                Description = "Applies 2 Lightning.\nExecute: 10 flat dmg.",
+                Description = "Applies 2 Lightning.\nExecute: 12 flat dmg.",
                 Cost = 2, CardType = CardType.Strike,
                 ResolutionRole = CardResolutionRole.Both,
                 MinionHp = 7, MinionAttack = 5
             };
             c.CatalystEffects.Add(new EffectDefinition { Type = EffectType.ApplyElement, Element = ElementType.Lightning, Value = 2, Target = TargetType.Enemy });
-            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 10, Target = TargetType.Enemy });
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 12, Target = TargetType.Enemy });
             return c;
         }
 
@@ -318,13 +318,13 @@ namespace CardGamePrototype.Core
             var c = new CardDefinition
             {
                 Id = "inferno", Name = "Inferno",
-                Description = "Applies 3 Fire.\nAuto: 12 dmg if Fire.",
+                Description = "Applies 3 Fire.\nAuto: 15 dmg if Fire.",
                 Cost = 2, CardType = CardType.Incantation,
                 ResolutionRole = CardResolutionRole.Both,
                 MinionHp = 6, MinionAttack = 4
             };
             c.CatalystEffects.Add(new EffectDefinition { Type = EffectType.ApplyElement, Element = ElementType.Fire, Value = 3, Target = TargetType.Enemy });
-            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.ConditionalDamage, Value = 12, Target = TargetType.Enemy, ConditionElement = ElementType.Fire, ConditionStacks = 1, ConsumeStacks = 1 });
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.ConditionalDamage, Value = 15, Target = TargetType.Enemy, ConditionElement = ElementType.Fire, ConditionStacks = 1, ConsumeStacks = 1 });
             return c;
         }
 
@@ -438,12 +438,12 @@ namespace CardGamePrototype.Core
             var c = new CardDefinition
             {
                 Id = "bone_spear", Name = "Bone Spear",
-                Description = "Bone-tipped assault.\nSpecial: pierces for 8 dmg.",
+                Description = "Bone-tipped assault.\nSpecial: pierces for 10 dmg.",
                 Cost = 1, CardType = CardType.Strike,
                 ResolutionRole = CardResolutionRole.Both,
                 MinionHp = 6, MinionAttack = 3
             };
-            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 8, Target = TargetType.Enemy });
+            c.ExecutionerEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 10, Target = TargetType.Enemy });
             return c;
         }
 
@@ -503,7 +503,7 @@ namespace CardGamePrototype.Core
                 ResolutionRole = CardResolutionRole.Catalyst,
                 MinionHp = 6, MinionAttack = 2
             };
-            c.CatalystEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 8, Target = TargetType.Enemy });
+            c.CatalystEffects.Add(new EffectDefinition { Type = EffectType.Damage, Value = 12, Target = TargetType.Enemy });
             return c;
         }
 
